@@ -1,5 +1,5 @@
 import express, {Request, Response, ErrorRequestHandler} from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../src/generated/prisma';
 import cors from 'cors';
 
 const prisma = new PrismaClient();
@@ -13,18 +13,14 @@ app.use(cors({
 
 app.use(express.json());
 
-/*app.get('/api/categoria', async (req: Request, res: Response) => {
+app.get('/api/categoria', async (req: Request, res: Response) => {
   try {
     const categorias = await prisma.categoria.findMany();
     res.json(categorias);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao buscar categorias' });
   }
-});  usar routes dps */ 
-
-app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'OK', message: 'Servidor está funcionando' });
-}); 
+});  
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({ error: 'Endpoint não encontrado.' });
