@@ -1,35 +1,54 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import './App.css';
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+interface Categoria {
+  idCategoria: number;
+  nome: string;
 }
 
-export default App
+function App() {
+  const [users, setUsers] = useState<Categoria[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await axios.get('/api/categoria');  // Usa o proxy: /api/ -> http://localhost:3000/
+        setUsers(response.data);
+      } catch (err) {
+        setError('Erro ao conectar à API');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  if (loading) return <p>Carregando...</p>;
+  if (error) return <p>{error}</p>;
+
+  return (
+    <div className="App">
+      <header className="App-header">
+        <h1>Usuários do Banco de Dados</h1>
+        {users.length > 0 ? (
+          <ul>
+            {users.map((user) => (
+              <li key={user.idCategoria}>
+                {user.nome ? user.nome : 'Sem nome'} ({user.idCategoria})
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>Nenhum usuário encontrado.</p>
+        )}
+      </header>
+    </div>
+  );
+}
+
+export default App;
