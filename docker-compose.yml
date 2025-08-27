@@ -1,0 +1,57 @@
+# docker-compose.dev.yml
+
+version: '3.8'
+
+services:
+  # Serviço do Backend (Node.js/Express)
+  backend:
+    build:
+      context: ./Backend
+    container_name: dev-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./Backend:/app
+      - /app/node_modules
+    env_file:
+      - ./Backend/.env
+    depends_on:
+      - db
+    # Este comando SOBRESCREVE o CMD do Dockerfile
+    command: sh -c "npx prisma migrate dev --name init && npx prisma generate && npm run dev"
+    restart: always
+
+  # Serviço do Frontend (React/Vite)
+  frontend:
+    build:
+      context: ./Frontend
+    container_name: dev-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./Frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_BACKEND_URL: http://backend:5000
+    depends_on:
+      - backend
+    restart: always
+
+  # Serviço do Banco de Dados (MySQL)
+  db:
+    # Usa a imagem oficial do MySQL
+    image: mysql:8.0
+    container_name: dev-db
+    ports:
+      # Mapeia a porta padrão do MySQL (3306)
+      - "3306:3306"
+    env_file:
+      - ./Backend/.env
+    volumes:
+      # Volume nomeado para persistir os dados do MySQL
+      - mysql_data:/var/lib/mysql
+    restart: always
+
+# Define o volume nomeado para persistência dos dados do banco
+volumes:
+  mysql_data:
