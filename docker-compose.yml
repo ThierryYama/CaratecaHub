@@ -52,6 +52,20 @@ services:
       - mysql_data:/var/lib/mysql
     restart: always
 
+  # Serviço do Prisma Studio
+  prisma-studio:
+    build: 
+      context: ./Backend
+    command: npx prisma studio --port 5555 --browser none
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./Backend:/app
+      - /app/node_modules
+    env_file:
+      - ./Backend/.env
+    depends_on:
+      - db
 # Define o volume nomeado para persistência dos dados do banco
 volumes:
   mysql_data:
