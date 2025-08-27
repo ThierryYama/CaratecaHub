@@ -5,11 +5,9 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    proxy: {
-      '/api': {  // Todas as chamadas para /api serão proxyadas para o backend
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-      },
+    watch: {
+      usePolling: true,
     },
-  },
+    host: true, // Garante que o servidor seja acessível externamente
+  }
 })
