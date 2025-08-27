@@ -15,7 +15,7 @@ function App() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await axios.get('/api/categoria');  // Usa o proxy: /api/ -> http://localhost:3000/
+        const response = await axios.get('http://localhost:5000/api/categoria');  // Usa o proxy: /api/ -> http://localhost:3000/
         setUsers(response.data);
       } catch (err) {
         setError('Erro ao conectar à API');
@@ -34,7 +34,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Usuários do Banco de Dados</h1>
+        <h1>Usuários do caratecahub</h1>
         {users.length > 0 ? (
           <ul>
             {users.map((user) => (
