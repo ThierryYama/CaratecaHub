@@ -27,4 +27,6 @@ pesoMin Decimal? @db.Decimal(5,2)
 pesoMax Decimal? @db.Decimal(5,2)
 graduacaoMin String?
 graduacaoMax String?
+createdAt DateTime @default(now())
+updatedAt DateTime? @updatedAt
 }
