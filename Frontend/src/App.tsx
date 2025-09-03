@@ -1,54 +1,44 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import './App.css';
 
-interface Categoria {
-  idCategoria: number;
-  nome: string;
-}
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Index from "./pages/Index";
+import Campeonatos from "./pages/Campeonatos";
+import GerenciamentoCampeonato from "./pages/GerenciamentoCampeonato";
+import Chaveamento from "./pages/Chaveamento";
+import MeuCampeonato from "./pages/MeuCampeonato";
+import ChaveamentosGerencia from "./pages/ChaveamentosGerencia";
+import VincularModalidades from "./pages/VincularModalidades";
+import Categorias from "./pages/Categorias";
+import Atletas from "./pages/Atletas";
+import NotFound from "./pages/NotFound";
 
-function App() {
-  const [users, setUsers] = useState<Categoria[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const queryClient = new QueryClient();
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/categoria');  // Usa o proxy: /api/ -> http://localhost:3000/
-        setUsers(response.data);
-      } catch (err) {
-        setError('Erro ao conectar à API');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
-  }, []);
-
-  if (loading) return <p>Carregando...</p>;
-  if (error) return <p>{error}</p>;
-
-  return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Usuários do caratecahub</h1>
-        {users.length > 0 ? (
-          <ul>
-            {users.map((user) => (
-              <li key={user.idCategoria}>
-                {user.nome ? user.nome : 'Sem nome'} ({user.idCategoria})
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>Nenhum usuário encontrado.</p>
-        )}
-      </header>
-    </div>
-  );
-}
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/campeonatos" element={<Campeonatos />} />
+          <Route path="/gerenciamento-campeonato" element={<GerenciamentoCampeonato />} />
+          <Route path="/chaveamento" element={<Chaveamento />} />
+          <Route path="/meu-campeonato" element={<MeuCampeonato />} />
+          <Route path="/chaveamentos-gerencia" element={<ChaveamentosGerencia />} />
+          <Route path="/vincular-modalidades" element={<VincularModalidades />} />
+          <Route path="/categorias" element={<Categorias />} />
+          <Route path="/atletas" element={<Atletas />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
