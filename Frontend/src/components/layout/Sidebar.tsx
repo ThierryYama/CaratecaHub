@@ -54,7 +54,7 @@ const Sidebar = ({ isCollapsed, onItemClick, onToggle }: SidebarProps) => {
     <aside className={cn(
       "bg-gray-900 text-white transition-all duration-300 flex flex-col shadow-xl z-50",
       "fixed inset-y-0 left-0 lg:relative lg:translate-x-0",
-      isCollapsed ? "-translate-x-full lg:w-16" : "translate-x-0 w-64"
+      isCollapsed ? "-translate-x-full lg:w-25" : "translate-x-0 w-64"
     )}>
       <div className="p-4 border-b border-gray-700">
         <div className={cn(
