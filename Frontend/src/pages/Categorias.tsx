@@ -25,7 +25,7 @@ interface Categoria {
 }
 
 const Categorias = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [activeItem, setActiveItem] = useState('categorias');
   const [categorias, setCategorias] = useState<Categoria[]>([
     {
@@ -161,13 +161,25 @@ const Categorias = () => {
   });
 
   return (
-    <div className="min-h-screen flex w-full bg-gray-50">
+    <div className="h-screen flex w-full bg-gray-50 overflow-hidden">
       <Sidebar 
         isCollapsed={isSidebarCollapsed}
-        activeItem={activeItem}
-        onItemClick={setActiveItem}
+        onItemClick={(item) => {
+          setActiveItem(item);
+          if (window.innerWidth < 1024) {
+            setIsSidebarCollapsed(true);
+          }
+        }}
+        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
       
+      {!isSidebarCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+          onClick={() => setIsSidebarCollapsed(true)}
+        ></div>
+      )}
+
       <div className="flex-1 flex flex-col">
         <header className="bg-white shadow-sm border-b border-gray-200 p-4">
           <div className="flex items-center justify-between">
@@ -310,7 +322,7 @@ const Categorias = () => {
           </div>
         </header>
 
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-y-auto">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
