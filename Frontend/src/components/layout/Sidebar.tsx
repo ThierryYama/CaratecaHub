@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   LayoutDashboard, 
@@ -16,6 +15,12 @@ import {
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -72,31 +77,41 @@ const Sidebar = ({ isCollapsed, onItemClick, onToggle }: SidebarProps) => {
       </div>
 
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto overflow-x-hidden">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleItemClick(item)}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors duration-200 text-left",
-                isActive
-                  ? "bg-red-600 text-white shadow-md"
-                  : "text-gray-300 hover:bg-gray-800 hover:text-white",
-                isCollapsed && "justify-center"
-              )}
-            >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              <span className={cn(
-                "whitespace-nowrap",
-                isCollapsed && "lg:hidden"
-              )}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
+        <TooltipProvider delayDuration={0}>
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Tooltip key={item.id} disableHoverableContent={!isCollapsed}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleItemClick(item)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors duration-200 text-left",
+                      isActive
+                        ? "bg-red-600 text-white shadow-md"
+                        : "text-gray-300 hover:bg-gray-800 hover:text-white",
+                      isCollapsed && "justify-center"
+                    )}
+                  >
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    <span className={cn(
+                      "whitespace-nowrap",
+                      isCollapsed && "lg:hidden"
+                    )}>
+                      {item.label}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                {isCollapsed ? (
+                  <TooltipContent side="right">
+                    <p>{item.label}</p>
+                  </TooltipContent>
+                ) : null}
+              </Tooltip>
+            );
+          })}
+        </TooltipProvider>
       </nav>
 
       <div className="p-4 border-t border-gray-700">
