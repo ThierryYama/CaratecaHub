@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Menu, Plus, Edit, Trash2, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/layout/Sidebar';
+import Header from '@/components/layout/Header';
 
 interface Categoria {
   id: number;
@@ -181,174 +181,164 @@ const Categorias = () => {
       )}
 
       <div className="flex-1 flex flex-col">
-        <header className="bg-white shadow-sm border-b border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                className="lg:hidden"
-              >
-                <Menu className="w-5 h-5" />
-              </Button>
-              <h1 className="text-2xl font-bold text-gray-900">Categorias</h1>
-            </div>
-            
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={resetForm}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nova Categoria
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>
-                    {categoriaEditando ? 'Editar Categoria' : 'Nova Categoria'}
-                  </DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="nome">Nome</Label>
-                      <Input
-                        id="nome"
-                        value={formData.nome}
-                        onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="sexo">Sexo</Label>
-                      <Select value={formData.sexo} onValueChange={(value) => setFormData(prev => ({ ...prev, sexo: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o sexo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="M">Masculino</SelectItem>
-                          <SelectItem value="F">Feminino</SelectItem>
-                          <SelectItem value="Misto">Misto</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="descricao">Descrição</Label>
-                    <Input
-                      id="descricao"
-                      value={formData.descricao}
-                      onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="idadeMinima">Idade Mínima</Label>
-                      <Input
-                        id="idadeMinima"
-                        type="number"
-                        value={formData.idadeMinima}
-                        onChange={(e) => setFormData(prev => ({ ...prev, idadeMinima: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="idadeMaxima">Idade Máxima</Label>
-                      <Input
-                        id="idadeMaxima"
-                        type="number"
-                        value={formData.idadeMaxima}
-                        onChange={(e) => setFormData(prev => ({ ...prev, idadeMaxima: e.target.value }))}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="graduacaoMinima">Graduação Mínima</Label>
-                      <Select value={formData.graduacaoMinima} onValueChange={(value) => setFormData(prev => ({ ...prev, graduacaoMinima: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a graduação mínima" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {graduacoes.map(grad => (
-                            <SelectItem key={grad} value={grad}>{grad}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="graduacaoMaxima">Graduação Máxima</Label>
-                      <Select value={formData.graduacaoMaxima} onValueChange={(value) => setFormData(prev => ({ ...prev, graduacaoMaxima: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a graduação máxima" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {graduacoes.map(grad => (
-                            <SelectItem key={grad} value={grad}>{grad}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="peso">Peso (kg) - Opcional</Label>
-                    <Input
-                      id="peso"
-                      type="number"
-                      step="0.1"
-                      value={formData.peso}
-                      onChange={(e) => setFormData(prev => ({ ...prev, peso: e.target.value }))}
-                      placeholder="Deixe em branco se não aplicável"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancelar
-                    </Button>
-                    <Button type="submit">
-                      {categoriaEditando ? 'Atualizar' : 'Criar'}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </header>
+        <Header onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
 
         <main className="flex-1 p-6 overflow-y-auto">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Lista de Categorias</CardTitle>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4" />
-                    <Input
-                      placeholder="Filtrar por nome..."
-                      value={filtro}
-                      onChange={(e) => setFiltro(e.target.value)}
-                      className="w-48"
-                    />
-                  </div>
-                  <Select value={filtroSexo} onValueChange={setFiltroSexo}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos</SelectItem>
-                      <SelectItem value="M">Masculino</SelectItem>
-                      <SelectItem value="F">Feminino</SelectItem>
-                      <SelectItem value="Misto">Misto</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={resetForm}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nova Categoria
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {categoriaEditando ? 'Editar Categoria' : 'Nova Categoria'}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="nome">Nome</Label>
+                          <Input
+                            id="nome"
+                            value={formData.nome}
+                            onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))
+                            }
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="sexo">Sexo</Label>
+                          <Select value={formData.sexo} onValueChange={(value) => setFormData(prev => ({ ...prev, sexo: value }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o sexo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="M">Masculino</SelectItem>
+                              <SelectItem value="F">Feminino</SelectItem>
+                              <SelectItem value="Misto">Misto</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="descricao">Descrição</Label>
+                        <Input
+                          id="descricao"
+                          value={formData.descricao}
+                          onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))
+                          }
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="idadeMinima">Idade Mínima</Label>
+                          <Input
+                            id="idadeMinima"
+                            type="number"
+                            value={formData.idadeMinima}
+                            onChange={(e) => setFormData(prev => ({ ...prev, idadeMinima: e.target.value }))
+                            }
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="idadeMaxima">Idade Máxima</Label>
+                          <Input
+                            id="idadeMaxima"
+                            type="number"
+                            value={formData.idadeMaxima}
+                            onChange={(e) => setFormData(prev => ({ ...prev, idadeMaxima: e.target.value }))
+                            }
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="graduacaoMinima">Graduação Mínima</Label>
+                          <Select value={formData.graduacaoMinima} onValueChange={(value) => setFormData(prev => ({ ...prev, graduacaoMinima: value }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a graduação mínima" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {graduacoes.map(grad => (
+                                <SelectItem key={grad} value={grad}>{grad}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="graduacaoMaxima">Graduação Máxima</Label>
+                          <Select value={formData.graduacaoMaxima} onValueChange={(value) => setFormData(prev => ({ ...prev, graduacaoMaxima: value }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a graduação máxima" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {graduacoes.map(grad => (
+                                <SelectItem key={grad} value={grad}>{grad}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="peso">Peso (kg) - Opcional</Label>
+                        <Input
+                          id="peso"
+                          type="number"
+                          step="0.1"
+                          value={formData.peso}
+                          onChange={(e) => setFormData(prev => ({ ...prev, peso: e.target.value }))
+                          }
+                          placeholder="Deixe em branco se não aplicável"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                          Cancelar
+                        </Button>
+                        <Button type="submit">
+                          {categoriaEditando ? 'Atualizar' : 'Criar'}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="flex items-center gap-4 pt-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4" />
+                  <Input
+                    placeholder="Filtrar por nome..."
+                    value={filtro}
+                    onChange={(e) => setFiltro(e.target.value)}
+                    className="w-48"
+                  />
                 </div>
+                <Select value={filtroSexo} onValueChange={setFiltroSexo}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="M">Masculino</SelectItem>
+                    <SelectItem value="F">Feminino</SelectItem>
+                    <SelectItem value="Misto">Misto</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardHeader>
             <CardContent>
