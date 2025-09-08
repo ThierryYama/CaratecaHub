@@ -1,74 +1,50 @@
 import React, { useState } from 'react';
-import { Menu, Plus, Edit, Trash2, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Plus, Edit, Trash2, Filter } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
-
-interface Categoria {
-  id: number;
-  nome: string;
-  descricao: string;
-  idadeMinima: number;
-  idadeMaxima: number;
-  sexo: 'M' | 'F' | 'Misto';
-  graduacaoMinima: string;
-  graduacaoMaxima: string;
-  peso?: number;
-  ativo: boolean;
-}
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Categoria, fetchCategorias, createCategoria, updateCategoria, deleteCategoria, CategoriaInput } from '@/services/api';
 
 const Categorias = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [activeItem, setActiveItem] = useState('categorias');
-  const [categorias, setCategorias] = useState<Categoria[]>([
-    {
-      id: 1,
-      nome: "Kata Juvenil Masculino",
-      descricao: "Categoria de kata para atletas juvenis masculinos",
-      idadeMinima: 14,
-      idadeMaxima: 17,
-      sexo: 'M',
-      graduacaoMinima: '6º Kyu',
-      graduacaoMaxima: '1º Dan',
-      ativo: true
-    },
-    {
-      id: 2,
-      nome: "Kumite Feminino -55kg",
-      descricao: "Categoria de kumite feminino até 55kg",
-      idadeMinima: 18,
-      idadeMaxima: 35,
-      sexo: 'F',
-      graduacaoMinima: '8º Kyu',
-      graduacaoMaxima: '5º Dan',
-      peso: 55,
-      ativo: true
-    }
-  ]);
-  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<Categoria | null>(null);
   const [filtro, setFiltro] = useState('');
   const [filtroSexo, setFiltroSexo] = useState('todos');
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CategoriaInput>({
     nome: '',
     descricao: '',
-    idadeMinima: '',
-    idadeMaxima: '',
-    sexo: '',
-    graduacaoMinima: '',
-    graduacaoMaxima: '',
-    peso: '',
-    ativo: true
+    faixaIdadeMin: 0,
+    faixaIdadeMax: 0,
+    genero: 'M',
+    graduacaoMin: '',
+    graduacaoMax: '',
+    pesoMin: undefined,
+    pesoMax: undefined,
   });
 
   const graduacoes = [
@@ -76,87 +52,106 @@ const Categorias = () => {
     '1º Dan', '2º Dan', '3º Dan', '4º Dan', '5º Dan', '6º Dan', '7º Dan', '8º Dan', '9º Dan', '10º Dan'
   ];
 
+  const { data: categorias = [], isLoading, isError } = useQuery<Categoria[]>({
+    queryKey: ['categorias'],
+    queryFn: fetchCategorias,
+  });
+  
+  const createMutation = useMutation({
+    mutationFn: createCategoria,
+    onSuccess: () => {
+      toast({ title: "Categoria criada com sucesso!" });
+      queryClient.invalidateQueries({ queryKey: ['categorias'] });
+      setIsDialogOpen(false);
+      resetForm();
+    },
+    onError: () => {
+      toast({ title: "Erro ao criar categoria", variant: "destructive" });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, categoria }: { id: number; categoria: Partial<CategoriaInput> }) =>
+      updateCategoria(id, categoria),
+    onSuccess: () => {
+      toast({ title: "Categoria atualizada com sucesso!" });
+      queryClient.invalidateQueries({ queryKey: ['categorias'] });
+      setIsDialogOpen(false);
+      resetForm();
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar categoria", variant: "destructive" });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteCategoria,
+    onSuccess: () => {
+      toast({ title: "Categoria removida com sucesso!" });
+      queryClient.invalidateQueries({ queryKey: ['categorias'] });
+    },
+    onError: () => {
+      toast({ title: "Erro ao remover categoria", variant: "destructive" });
+    }
+  });
+
   const resetForm = () => {
     setFormData({
       nome: '',
       descricao: '',
-      idadeMinima: '',
-      idadeMaxima: '',
-      sexo: '',
-      graduacaoMinima: '',
-      graduacaoMaxima: '',
-      peso: '',
-      ativo: true
+      faixaIdadeMin: 0,
+      faixaIdadeMax: 0,
+      genero: 'M',
+      graduacaoMin: '',
+      graduacaoMax: '',
+      pesoMin: undefined,
+      pesoMax: undefined,
     });
     setCategoriaEditando(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (categoriaEditando) {
-      setCategorias(prev => prev.map(cat => 
-        cat.id === categoriaEditando.id 
-          ? {
-              ...cat,
-              nome: formData.nome,
-              descricao: formData.descricao,
-              idadeMinima: parseInt(formData.idadeMinima),
-              idadeMaxima: parseInt(formData.idadeMaxima),
-              sexo: formData.sexo as 'M' | 'F' | 'Misto',
-              graduacaoMinima: formData.graduacaoMinima,
-              graduacaoMaxima: formData.graduacaoMaxima,
-              peso: formData.peso ? parseFloat(formData.peso) : undefined,
-              ativo: formData.ativo
-            }
-          : cat
-      ));
-      toast({ title: "Categoria atualizada com sucesso!" });
-    } else {
-      const novaCategoria: Categoria = {
-        id: Math.max(...categorias.map(c => c.id)) + 1,
-        nome: formData.nome,
-        descricao: formData.descricao,
-        idadeMinima: parseInt(formData.idadeMinima),
-        idadeMaxima: parseInt(formData.idadeMaxima),
-        sexo: formData.sexo as 'M' | 'F' | 'Misto',
-        graduacaoMinima: formData.graduacaoMinima,
-        graduacaoMaxima: formData.graduacaoMaxima,
-        peso: formData.peso ? parseFloat(formData.peso) : undefined,
-        ativo: formData.ativo
-      };
-      setCategorias(prev => [...prev, novaCategoria]);
-      toast({ title: "Categoria criada com sucesso!" });
-    }
+    const categoriaData: CategoriaInput = {
+        ...formData,
+        descricao: formData.descricao?.trim() === '' ? null : formData.descricao,
+        faixaIdadeMin: Number(formData.faixaIdadeMin),
+        faixaIdadeMax: Number(formData.faixaIdadeMax),
+        pesoMin: formData.pesoMin ? Number(formData.pesoMin) : undefined,
+        pesoMax: formData.pesoMax ? Number(formData.pesoMax) : undefined,
+    } as CategoriaInput;
 
-    resetForm();
-    setIsDialogOpen(false);
+    if (categoriaEditando) {
+      updateMutation.mutate({ id: categoriaEditando.idCategoria, categoria: categoriaData });
+    } else {
+      createMutation.mutate(categoriaData);
+    }
   };
 
   const handleEdit = (categoria: Categoria) => {
     setCategoriaEditando(categoria);
     setFormData({
       nome: categoria.nome,
-      descricao: categoria.descricao,
-      idadeMinima: categoria.idadeMinima.toString(),
-      idadeMaxima: categoria.idadeMaxima.toString(),
-      sexo: categoria.sexo,
-      graduacaoMinima: categoria.graduacaoMinima,
-      graduacaoMaxima: categoria.graduacaoMaxima,
-      peso: categoria.peso?.toString() || '',
-      ativo: categoria.ativo
+      descricao: categoria.descricao ?? '',
+      faixaIdadeMin: categoria.faixaIdadeMin,
+      faixaIdadeMax: categoria.faixaIdadeMax,
+      genero: categoria.genero ?? 'M',
+      graduacaoMin: categoria.graduacaoMin,
+      graduacaoMax: categoria.graduacaoMax,
+      pesoMin: categoria.pesoMin,
+      pesoMax: categoria.pesoMax,
     });
     setIsDialogOpen(true);
   };
 
   const handleDelete = (id: number) => {
-    setCategorias(prev => prev.filter(cat => cat.id !== id));
-    toast({ title: "Categoria removida com sucesso!" });
+    deleteMutation.mutate(id);
   };
 
   const categoriasFiltradas = categorias.filter(categoria => {
     const matchNome = categoria.nome.toLowerCase().includes(filtro.toLowerCase());
-    const matchSexo = filtroSexo === 'todos' || categoria.sexo === filtroSexo;
+    const matchSexo = filtroSexo === 'todos' || categoria.genero === filtroSexo;
     return matchNome && matchSexo;
   });
 
@@ -166,24 +161,24 @@ const Categorias = () => {
         isCollapsed={isSidebarCollapsed}
         onItemClick={(item) => {
           setActiveItem(item);
-          if (window.innerWidth < 1024) {
-            setIsSidebarCollapsed(true);
-          }
+          if (window.innerWidth < 1024) setIsSidebarCollapsed(true);
         }}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
-      
       {!isSidebarCollapsed && (
         <div 
           className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setIsSidebarCollapsed(true)}
-        ></div>
+        />
       )}
 
       <div className="flex-1 flex flex-col">
         <Header onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
 
         <main className="flex-1 p-6 overflow-y-auto">
+          {isLoading && <div className="mb-4">Carregando...</div>}
+          {isError && <div className="mb-4 text-red-600">Erro ao carregar categorias.</div>}
+
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -208,21 +203,20 @@ const Categorias = () => {
                           <Input
                             id="nome"
                             value={formData.nome}
-                            onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))
-                            }
+                            onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
                             required
                           />
                         </div>
                         <div>
                           <Label htmlFor="sexo">Sexo</Label>
-                          <Select value={formData.sexo} onValueChange={(value) => setFormData(prev => ({ ...prev, sexo: value }))}>
+                          <Select value={formData.genero} onValueChange={(value) => setFormData(prev => ({ ...prev, genero: value as Categoria['genero'] }))}>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione o sexo" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="M">Masculino</SelectItem>
                               <SelectItem value="F">Feminino</SelectItem>
-                              <SelectItem value="Misto">Misto</SelectItem>
+                              <SelectItem value="Outro">Outro</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -233,9 +227,8 @@ const Categorias = () => {
                         <Input
                           id="descricao"
                           value={formData.descricao}
-                          onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))
-                          }
-                          required
+                          onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                          placeholder="Opcional"
                         />
                       </div>
 
@@ -245,9 +238,8 @@ const Categorias = () => {
                           <Input
                             id="idadeMinima"
                             type="number"
-                            value={formData.idadeMinima}
-                            onChange={(e) => setFormData(prev => ({ ...prev, idadeMinima: e.target.value }))
-                            }
+                            value={formData.faixaIdadeMin}
+                            onChange={(e) => setFormData(prev => ({ ...prev, faixaIdadeMin: Number(e.target.value) }))}
                             required
                           />
                         </div>
@@ -256,9 +248,8 @@ const Categorias = () => {
                           <Input
                             id="idadeMaxima"
                             type="number"
-                            value={formData.idadeMaxima}
-                            onChange={(e) => setFormData(prev => ({ ...prev, idadeMaxima: e.target.value }))
-                            }
+                            value={formData.faixaIdadeMax}
+                            onChange={(e) => setFormData(prev => ({ ...prev, faixaIdadeMax: Number(e.target.value) }))}
                             required
                           />
                         </div>
@@ -267,51 +258,59 @@ const Categorias = () => {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="graduacaoMinima">Graduação Mínima</Label>
-                          <Select value={formData.graduacaoMinima} onValueChange={(value) => setFormData(prev => ({ ...prev, graduacaoMinima: value }))}>
+                          <Select value={formData.graduacaoMin} onValueChange={(value) => setFormData(prev => ({ ...prev, graduacaoMin: value }))}>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione a graduação mínima" />
                             </SelectTrigger>
                             <SelectContent>
-                              {graduacoes.map(grad => (
-                                <SelectItem key={grad} value={grad}>{grad}</SelectItem>
-                              ))}
+                              {graduacoes.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
                         <div>
                           <Label htmlFor="graduacaoMaxima">Graduação Máxima</Label>
-                          <Select value={formData.graduacaoMaxima} onValueChange={(value) => setFormData(prev => ({ ...prev, graduacaoMaxima: value }))}>
+                          <Select value={formData.graduacaoMax} onValueChange={(value) => setFormData(prev => ({ ...prev, graduacaoMax: value }))}>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione a graduação máxima" />
                             </SelectTrigger>
                             <SelectContent>
-                              {graduacoes.map(grad => (
-                                <SelectItem key={grad} value={grad}>{grad}</SelectItem>
-                              ))}
+                              {graduacoes.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
 
-                      <div>
-                        <Label htmlFor="peso">Peso (kg) - Opcional</Label>
-                        <Input
-                          id="peso"
-                          type="number"
-                          step="0.1"
-                          value={formData.peso}
-                          onChange={(e) => setFormData(prev => ({ ...prev, peso: e.target.value }))
-                          }
-                          placeholder="Deixe em branco se não aplicável"
-                        />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="pesoMin">Peso Mínimo (kg) - Opcional</Label>
+                          <Input
+                            id="pesoMin"
+                            type="number"
+                            step="0.1"
+                            value={formData.pesoMin ?? ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, pesoMin: e.target.value === '' ? undefined : Number(e.target.value) }))}
+                            placeholder="Deixe em branco se não aplicável"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="pesoMax">Peso Máximo (kg) - Opcional</Label>
+                          <Input
+                            id="pesoMax"
+                            type="number"
+                            step="0.1"
+                            value={formData.pesoMax ?? ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, pesoMax: e.target.value === '' ? undefined : Number(e.target.value) }))}
+                            placeholder="Deixe em branco se não aplicável"
+                          />
+                        </div>
                       </div>
 
                       <div className="flex justify-end gap-2">
                         <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                           Cancelar
                         </Button>
-                        <Button type="submit">
-                          {categoriaEditando ? 'Atualizar' : 'Criar'}
+                        <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                          {createMutation.isPending || updateMutation.isPending ? 'Salvando...' : (categoriaEditando ? 'Atualizar' : 'Criar')}
                         </Button>
                       </div>
                     </form>
@@ -336,7 +335,7 @@ const Categorias = () => {
                     <SelectItem value="todos">Todos</SelectItem>
                     <SelectItem value="M">Masculino</SelectItem>
                     <SelectItem value="F">Feminino</SelectItem>
-                    <SelectItem value="Misto">Misto</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -350,31 +349,29 @@ const Categorias = () => {
                     <TableHead>Idade</TableHead>
                     <TableHead>Graduação</TableHead>
                     <TableHead>Peso</TableHead>
-                    <TableHead>Status</TableHead>
                     <TableHead>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {categoriasFiltradas.map((categoria) => (
-                    <TableRow key={categoria.id}>
+                    <TableRow key={categoria.idCategoria}>
                       <TableCell>
                         <div>
                           <div className="font-medium">{categoria.nome}</div>
                           <div className="text-sm text-gray-500">{categoria.descricao}</div>
                         </div>
                       </TableCell>
-                      <TableCell>{categoria.sexo}</TableCell>
-                      <TableCell>{categoria.idadeMinima} - {categoria.idadeMaxima} anos</TableCell>
-                      <TableCell>{categoria.graduacaoMinima} - {categoria.graduacaoMaxima}</TableCell>
-                      <TableCell>{categoria.peso ? `${categoria.peso}kg` : '-'}</TableCell>
+                      <TableCell>{categoria.genero}</TableCell>
+                      <TableCell>{categoria.faixaIdadeMin} - {categoria.faixaIdadeMax} anos</TableCell>
+                      <TableCell>{categoria.graduacaoMin} - {categoria.graduacaoMax}</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          categoria.ativo 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {categoria.ativo ? 'Ativo' : 'Inativo'}
-                        </span>
+                        {categoria.pesoMin != null && categoria.pesoMax != null
+                          ? `${categoria.pesoMin}kg - ${categoria.pesoMax}kg`
+                          : categoria.pesoMin != null
+                            ? `>= ${categoria.pesoMin}kg`
+                            : categoria.pesoMax != null
+                              ? `<= ${categoria.pesoMax}kg`
+                              : '-'}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -388,7 +385,8 @@ const Categorias = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(categoria.id)}
+                            onClick={() => handleDelete(categoria.idCategoria)}
+                            disabled={deleteMutation.isPending}
                           >
                             <Trash2 className="w-4 h-4 text-red-500" />
                           </Button>
