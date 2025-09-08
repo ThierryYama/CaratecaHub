@@ -2,7 +2,7 @@ import axios from "axios";
 
 
 const api = axios.create({
-  baseURL: "http://backend:5000",
+  baseURL: "http://localhost:5000",
   headers: {
     "Content-Type": "application/json",
     "Authorization": `Bearer ${localStorage.getItem("token")}`,
@@ -12,14 +12,14 @@ const api = axios.create({
 export interface Categoria {
   idCategoria: number;
   nome: string;
-  descricao: string;
-  idadeMinima: number;
-  idadeMaxima: number;
-  sexo: 'M' | 'F' | 'Misto';
-  graduacaoMinima: string;
-  graduacaoMaxima: string;
-  peso?: number | null;
-  ativo: boolean;
+  faixaIdadeMin: number;
+  faixaIdadeMax: number;
+  genero: 'M' | 'F' | 'Outro';
+  descricao?: string | null;
+  pesoMin?: number;
+  pesoMax?: number;
+  graduacaoMin: string;
+  graduacaoMax: string;
 }
 
 export type CategoriaInput = Omit<Categoria, 'idCategoria'>;
@@ -48,3 +48,5 @@ export const updateCategoria = async (id: number, categoria: Partial<CategoriaIn
 export const deleteCategoria = async (id: number): Promise<void> => {
     await api.delete(`/deletarCategoria/${id}`);
 };
+
+export default api
