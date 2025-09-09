@@ -18,15 +18,45 @@ datasource db {
 model Categoria {
 
 idCategoria Int @id @default(autoincrement())
-nome String
+nome String @db.VarChar(100)
 faixaIdadeMin Int?
 faixaIdadeMax Int?
-genero String?
-descricao String?
+genero String? @db.VarChar(45)
+descricao String? @db.VarChar(255)
 pesoMin Decimal? @db.Decimal(5,2)
 pesoMax Decimal? @db.Decimal(5,2)
-graduacaoMin String?
-graduacaoMax String?
+graduacaoMin String? @db.VarChar(45)
+graduacaoMax String? @db.VarChar(45)
 createdAt DateTime @default(now())
 updatedAt DateTime? @updatedAt
+}
+
+model Associacao {
+
+idAssociacao Int @id @default(autoincrement())
+nome String @db.VarChar(255)
+cnpj String @db.VarChar(45)
+endereco String @db.VarChar(255)
+telefone String @db.VarChar(45)
+email String @db.VarChar(100)
+senha String @db.VarChar(255)
+sigla String? @db.VarChar(25)
+atletas Atleta[]
+createdAt DateTime @default(now())
+updatedAt DateTime? @updatedAt
+deletedAt DateTime?
+}
+
+model Atleta {
+  idAtleta       Int        @id @default(autoincrement())
+  nome           String     @db.VarChar(45)
+  dataNascimento DateTime   @db.Date
+  genero         String     @db.VarChar(45)
+  graduacao      String     @db.VarChar(45)
+  peso           Decimal    @db.Decimal(5, 2)
+  associacao     Associacao @relation(fields: [idAssociacao], references: [idAssociacao])
+  idAssociacao   Int
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime?  @updatedAt
+  deletedAt      DateTime?
 }
