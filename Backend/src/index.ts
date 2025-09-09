@@ -2,6 +2,7 @@ import express, {Request, Response, ErrorRequestHandler} from 'express';
 import { PrismaClient } from '../src/generated/prisma';
 import cors from 'cors';
 import RotaCategoria from './routes/RotaCategoria';
+import RotaAtleta from './routes/RotaAtletas';
 
 const prisma = new PrismaClient();
 const port = process.env.PORT || 3000;
@@ -14,7 +15,9 @@ app.use(cors({
 
 app.use(express.json());
 
+//Rotas 
 app.use(RotaCategoria);
+app.use(RotaAtleta);
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({ error: 'Endpoint não encontrado.' });
