@@ -67,6 +67,9 @@ async function run() {
         graduacao: '3°Kyu',
         peso: '64.50',
         idAssociacao: assoc1.idAssociacao,
+        status: true,
+        telefone: '(11) 91234-5678',
+        email: 'thierry@teste.com'
       },
       {
         nome: 'Ana',
@@ -75,6 +78,9 @@ async function run() {
         graduacao: '1°Kyu',
         peso: '57.30',
         idAssociacao: assoc2.idAssociacao,
+        status: false,
+        telefone: '(21) 99876-5432',
+        email: 'ana@teste.com'
       },
       {
         nome: 'Alice',
@@ -83,6 +89,9 @@ async function run() {
         graduacao: '5°Kyu',
         peso: '60.30',
         idAssociacao: assoc2.idAssociacao,
+        status: true,
+        telefone: '(21) 98765-4321',
+        email: 'alice@teste.com'
       }
     ],
   });
