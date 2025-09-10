@@ -56,7 +56,7 @@ const Categorias = () => {
     queryKey: ['categorias'],
     queryFn: fetchCategorias,
   });
-  
+
   const createMutation = useMutation({
     mutationFn: createCategoria,
     onSuccess: () => {
@@ -112,14 +112,14 @@ const Categorias = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const categoriaData: CategoriaInput = {
-        ...formData,
-        descricao: formData.descricao?.trim() === '' ? null : formData.descricao,
-        faixaIdadeMin: Number(formData.faixaIdadeMin),
-        faixaIdadeMax: Number(formData.faixaIdadeMax),
-        pesoMin: formData.pesoMin ? Number(formData.pesoMin) : undefined,
-        pesoMax: formData.pesoMax ? Number(formData.pesoMax) : undefined,
+      ...formData,
+      descricao: formData.descricao?.trim() === '' ? null : formData.descricao,
+      faixaIdadeMin: Number(formData.faixaIdadeMin),
+      faixaIdadeMax: Number(formData.faixaIdadeMax),
+      pesoMin: formData.pesoMin ? Number(formData.pesoMin) : undefined,
+      pesoMax: formData.pesoMax ? Number(formData.pesoMax) : undefined,
     } as CategoriaInput;
 
     if (categoriaEditando) {
@@ -157,7 +157,7 @@ const Categorias = () => {
 
   return (
     <div className="h-screen flex w-full bg-gray-50 overflow-hidden">
-      <Sidebar 
+      <Sidebar
         isCollapsed={isSidebarCollapsed}
         onItemClick={(item) => {
           setActiveItem(item);
@@ -166,7 +166,7 @@ const Categorias = () => {
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
       {!isSidebarCollapsed && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setIsSidebarCollapsed(true)}
         />
@@ -176,9 +176,6 @@ const Categorias = () => {
         <Header onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
 
         <main className="flex-1 p-6 overflow-y-auto">
-          {isLoading && <div className="mb-4">Carregando...</div>}
-          {isError && <div className="mb-4 text-red-600">Erro ao carregar categorias.</div>}
-
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -353,6 +350,17 @@ const Categorias = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {isLoading && (
+                    <TableRow>
+                      <TableCell colSpan={8}>Carregando...</TableCell>
+                    </TableRow>
+                  )}
+                  {isError && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-red-600">Erro ao carregar atletas.</TableCell>
+                    </TableRow>
+                  )}
+
                   {categoriasFiltradas.map((categoria) => (
                     <TableRow key={categoria.idCategoria}>
                       <TableCell>
