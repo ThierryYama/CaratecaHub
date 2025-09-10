@@ -22,7 +22,59 @@ export interface Categoria {
   graduacaoMax: string;
 }
 
+export interface Atleta {
+  idAtleta: number;
+  nome: string;
+  dataNascimento: string;
+  genero: 'Masculino' | 'Feminino' | 'Outro';
+  graduacao: string;
+  peso: number;
+  idAssociacao: number;
+  status: boolean;
+  telefone: string;
+  email: string;
+}
+
 export type CategoriaInput = Omit<Categoria, 'idCategoria'>;
+export type AtletaInput = Omit<Atleta, 'idAtleta' | 'idAssociacao'>;
+
+export const fetchAtletas = async (): Promise<Atleta[]> => {
+    try{
+        const response = await api.get("/listarAtletas"); 
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching atletas:", error);
+        throw error;
+    } 
+};
+
+export const createAtleta = async (atleta: AtletaInput): Promise<Atleta> => {
+    const payload = {
+        ...atleta,
+        dataNascimento: atleta.dataNascimento.includes('T')
+            ? atleta.dataNascimento
+            : `${atleta.dataNascimento}T00:00:00.000Z`,
+        idAssociacao: 1,
+    };
+    const response = await api.post('/cadastrarAtleta', payload);
+    return response.data;
+}
+
+export const updateAtleta = async (id: number, atleta: Partial<AtletaInput>): Promise<Atleta> => {
+    const payload: any = { ...atleta, idAssociacao: 1 };
+    if (payload.dataNascimento) {
+        payload.dataNascimento = payload.dataNascimento.includes('T')
+            ? payload.dataNascimento
+            : `${payload.dataNascimento}T00:00:00.000Z`;
+    }
+    const response = await api.put(`/atualizarAtleta/${id}`, payload);
+    return response.data;
+}
+
+export const deleteAtleta = async (id: number): Promise<void> => {
+    await api.delete(`/deletarAtleta/${id}`);
+}
+
 
 
 export const fetchCategorias = async (): Promise<Categoria[]> => {
