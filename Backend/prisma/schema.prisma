@@ -54,6 +54,9 @@ model Atleta {
   genero         String     @db.VarChar(45)
   graduacao      String     @db.VarChar(45)
   peso           Decimal    @db.Decimal(5, 2)
+  status         Boolean    @default(true)
+  telefone       String     @db.VarChar(45)
+  email          String     @db.VarChar(100)
   associacao     Associacao @relation(fields: [idAssociacao], references: [idAssociacao])
   idAssociacao   Int
   createdAt      DateTime   @default(now())
