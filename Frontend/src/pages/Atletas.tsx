@@ -353,8 +353,6 @@ const Atletas = () => {
                         )}
                       </div>
 
-                      {/* Campos de academia/responsável removidos, não fazem parte do modelo atual */}
-
                       <div className="flex justify-end gap-2">
                         <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                           Cancelar
@@ -451,10 +449,10 @@ const Atletas = () => {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           {avatars[atleta.idAtleta] ? (
-                            <img src={avatars[atleta.idAtleta]} alt={atleta.nome} className="w-10 h-10 rounded-full object-cover" />
+                            <img src={avatars[atleta.idAtleta]} alt={atleta.nome} className="w-12 h-12 rounded-full object-cover" />
                           ) : (
-                            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                              <User className="w-5 h-5 text-gray-600" />
+                            <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                              <User className="w-6 h-6 text-gray-600" />
                             </div>
                           )}
                           <div>
