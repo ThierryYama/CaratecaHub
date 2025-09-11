@@ -16,35 +16,34 @@ datasource db {
 }
 
 model Categoria {
-
-idCategoria Int @id @default(autoincrement())
-nome String @db.VarChar(100)
-faixaIdadeMin Int?
-faixaIdadeMax Int?
-genero String? @db.VarChar(45)
-descricao String? @db.VarChar(255)
-pesoMin Decimal? @db.Decimal(5,2)
-pesoMax Decimal? @db.Decimal(5,2)
-graduacaoMin String? @db.VarChar(45)
-graduacaoMax String? @db.VarChar(45)
-createdAt DateTime @default(now())
-updatedAt DateTime? @updatedAt
+  idCategoria   Int       @id @default(autoincrement())
+  nome          String    @db.VarChar(100)
+  faixaIdadeMin Int?
+  faixaIdadeMax Int?
+  genero        String?   @db.VarChar(45)
+  descricao     String?   @db.VarChar(255)
+  pesoMin       Decimal?  @db.Decimal(5, 2)
+  pesoMax       Decimal?  @db.Decimal(5, 2)
+  graduacaoMin  String?   @db.VarChar(45)
+  graduacaoMax  String?   @db.VarChar(45)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime? @updatedAt
 }
 
 model Associacao {
-
-idAssociacao Int @id @default(autoincrement())
-nome String @db.VarChar(255)
-cnpj String @db.VarChar(45)
-endereco String @db.VarChar(255)
-telefone String @db.VarChar(45)
-email String @db.VarChar(100)
-senha String @db.VarChar(255)
-sigla String? @db.VarChar(25)
-atletas Atleta[]
-createdAt DateTime @default(now())
-updatedAt DateTime? @updatedAt
-deletedAt DateTime?
+  idAssociacao Int       @id @default(autoincrement())
+  nome         String    @db.VarChar(255)
+  cnpj         String    @db.VarChar(45)
+  endereco     String    @db.VarChar(255)
+  telefone     String    @db.VarChar(45)
+  email        String    @db.VarChar(100)
+  senha        String    @db.VarChar(255)
+  sigla        String?   @db.VarChar(25)
+  atletas      Atleta[]
+  equipes      Equipe[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime? @updatedAt
+  deletedAt    DateTime?
 }
 
 model Atleta {
@@ -58,8 +57,31 @@ model Atleta {
   telefone       String     @db.VarChar(45)
   email          String     @db.VarChar(100)
   associacao     Associacao @relation(fields: [idAssociacao], references: [idAssociacao])
+  equipes        EquipeAtleta[]
   idAssociacao   Int
   createdAt      DateTime   @default(now())
   updatedAt      DateTime?  @updatedAt
   deletedAt      DateTime?
+}
+
+model Equipe {   
+idEquipe Int @id @default(autoincrement()) 
+nome String @db.VarChar(100) 
+descricao String? @db.VarChar(255) 
+idAssociacao Int 
+associacao Associacao @relation(fields: [idAssociacao], references: [idAssociacao]) 
+membros EquipeAtleta[] 
+createdAt DateTime @default(now()) 
+updatedAt DateTime? @updatedAt 
+deletedAt DateTime? 
+}
+
+model EquipeAtleta { 
+idEquipeAtleta Int @id @default(autoincrement()) 
+idEquipe Int 
+idAtleta Int 
+equipe Equipe @relation(fields: [idEquipe], references: [idEquipe], onDelete: Cascade) 
+atleta Atleta @relation(fields: [idAtleta], references: [idAtleta], onDelete: Cascade) 
+createdAt DateTime @default(now()) 
+@@unique([idEquipe, idAtleta]) 
 }
