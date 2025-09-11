@@ -1,11 +1,11 @@
 import express, {Request, Response, ErrorRequestHandler} from 'express';
-import { PrismaClient } from '../src/generated/prisma';
 import cors from 'cors';
 import RotaCategoria from './routes/RotaCategoria';
 import RotaAtleta from './routes/RotaAtletas';
 import RotaEquipe from './routes/RotaEquipe';
+import prisma from './lib/prisma';
 
-const prisma = new PrismaClient();
+
 const port = process.env.PORT || 3000;
 const app = express();
 

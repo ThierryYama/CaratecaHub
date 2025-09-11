@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "../generated/prisma";
+import prisma from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 export const cadastrarEquipe = async (req: Request, res: Response) => {
   const { nome, descricao, idAssociacao, atletasIds } = req.body;
