@@ -3,6 +3,17 @@ import { PrismaClient } from '../../src/generated/prisma';
 const prisma = new PrismaClient();
 
 async function run() {
+  
+  await prisma.$executeRaw`SET FOREIGN_KEY_CHECKS = 0;`;
+  await prisma.$executeRaw`TRUNCATE TABLE \`Atleta\`;`;
+  await prisma.$executeRaw`TRUNCATE TABLE \`Categoria\`;`;
+  await prisma.$executeRaw`TRUNCATE TABLE \`Associacao\`;`;
+  await prisma.$executeRaw`TRUNCATE TABLE \`Equipe\`;`;
+  await prisma.$executeRaw`TRUNCATE TABLE \`EquipeAtleta\`;`;
+  await prisma.$executeRaw`SET FOREIGN_KEY_CHECKS = 1;`;
+
+  console.log('Tabelas limpas e IDs resetados com sucesso.');
+
   await prisma.atleta.deleteMany({});
   await prisma.categoria.deleteMany({});
   await prisma.associacao.deleteMany({});
