@@ -95,6 +95,13 @@ enum Modalidade {
   KUMITE_EQUIPE
 }
 
+enum Status {
+  PENDENTE
+  EM_ANDAMENTO
+  FINALIZADO
+  CANCELADO
+}
+
 model Campeonato {
   idCampeonato Int @id @default(autoincrement())
   idAssociacao Int
@@ -103,7 +110,7 @@ model Campeonato {
   dataInicio DateTime @db.Date
   dataFim DateTime? @db.Date
   descricao String? @db.VarChar(256)
-  status Boolean @default(true)
+  status Status @default(PENDENTE)
   modalidades CampeonatoModalidade[]
 }
 
@@ -113,7 +120,7 @@ model CampeonatoModalidade{
   idCategoria Int
   modalidade Modalidade
   campeonato Campeonato @relation(fields: [idCampeonato], references: [idCampeonato])
-  categoria Categoria @relation(fields: [idCategoria], references: [idCategoria])
+  categoria Categoria? @relation(fields: [idCategoria], references: [idCategoria])
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
 }
