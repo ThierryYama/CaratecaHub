@@ -35,6 +35,26 @@ export interface Atleta {
   email: string;
 }
 
+export interface Equipe {
+  idEquipe: number;
+  nome: string;
+  descricao?: string | null;
+  idAssociacao: number;
+  membros: {
+    atleta: Atleta;
+  }[];
+}
+
+export interface EquipeInput {
+  nome: string;
+  descricao?: string;
+  idAssociacao: number;
+  atletasIds: number[];
+}
+
+export type EquipeUpdateInput = Partial<Pick<Equipe, 'nome' | 'descricao'>>;
+
+
 export type CategoriaInput = Omit<Categoria, 'idCategoria'>;
 export type AtletaInput = Omit<Atleta, 'idAtleta' | 'idAssociacao'>;
 
@@ -100,5 +120,38 @@ export const updateCategoria = async (id: number, categoria: Partial<CategoriaIn
 export const deleteCategoria = async (id: number): Promise<void> => {
     await api.delete(`/deletarCategoria/${id}`);
 };
+
+export const fetchEquipes = async (): Promise<Equipe[]> => {
+  try {
+    const response = await api.get("/listarEquipes");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching equipes:", error);
+    throw error;
+  }
+};
+
+export const createEquipe = async (equipe: EquipeInput): Promise<Equipe> => {
+  const response = await api.post('/cadastrarEquipe', equipe);
+  return response.data;
+};
+
+export const updateEquipe = async (id: number, equipe: EquipeUpdateInput): Promise<Equipe> => {
+  const response = await api.put(`/atualizarEquipe/${id}`, equipe);
+  return response.data;
+};
+
+export const deleteEquipe = async (id: number): Promise<void> => {
+  await api.delete(`/deletarEquipe/${id}`);
+};
+
+export const vincularAtletaEquipe = async (idEquipe: number, idAtleta: number): Promise<void> => {
+  await api.post(`/vincularAtletaEquipe/${idEquipe}/${idAtleta}`);
+};
+
+export const removerAtletaEquipe = async (idEquipe: number, idAtleta: number): Promise<void> => {
+  await api.delete(`/removerAtletaEquipe/${idEquipe}/${idAtleta}`);
+};
+
 
 export default api
