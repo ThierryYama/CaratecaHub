@@ -26,6 +26,7 @@ model Categoria {
   pesoMax       Decimal?  @db.Decimal(5, 2)
   graduacaoMin  String?   @db.VarChar(45)
   graduacaoMax  String?   @db.VarChar(45)
+  modalidades   CampeonatoModalidade[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
 }
@@ -84,4 +85,32 @@ equipe Equipe @relation(fields: [idEquipe], references: [idEquipe], onDelete: Ca
 atleta Atleta @relation(fields: [idAtleta], references: [idAtleta], onDelete: Cascade) 
 createdAt DateTime @default(now()) 
 @@unique([idEquipe, idAtleta]) 
+}
+
+enum Modalidade {
+  KATA
+  KUMITE
+  KATA_EQUIPE
+  KUMITE_EQUIPE
+}
+
+model Campeonato {
+  idCampeonato Int @id @default(autoincrement())
+  nome String @db.VarChar(256)
+  dataInicio DateTime @db.Date
+  dataFim DateTime? @db.Date
+  descricao String? @db.VarChar(256)
+  status Boolean @default(true)
+  modalidades CampeonatoModalidade[]
+}
+
+model CampeonatoModalidade{
+  idCampeonatoModalidade Int @id @default(autoincrement())
+  idCampeonato Int
+  idCategoria Int
+  modalidade Modalidade
+  campeonato Campeonato @relation(fields: [idCampeonato], references: [idCampeonato])
+  categoria Categoria @relation(fields: [idCategoria], references: [idCategoria])
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
 }
