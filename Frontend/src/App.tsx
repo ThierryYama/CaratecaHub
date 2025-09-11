@@ -14,6 +14,7 @@ import VincularModalidades from "./pages/VincularModalidades";
 import Categorias from "./pages/Categorias";
 import Atletas from "./pages/Atletas";
 import NotFound from "./pages/NotFound";
+import Equipes from "./pages/Equipes";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/vincular-modalidades" element={<VincularModalidades />} />
           <Route path="/categorias" element={<Categorias />} />
           <Route path="/atletas" element={<Atletas />} />
+          <Route path="/equipes" element={<Equipes />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
