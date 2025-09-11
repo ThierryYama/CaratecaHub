@@ -40,6 +40,7 @@ model Associacao {
   email        String    @db.VarChar(100)
   senha        String    @db.VarChar(255)
   sigla        String?   @db.VarChar(25)
+  campeonatos  Campeonato[]
   atletas      Atleta[]
   equipes      Equipe[]
   createdAt    DateTime  @default(now())
@@ -96,6 +97,8 @@ enum Modalidade {
 
 model Campeonato {
   idCampeonato Int @id @default(autoincrement())
+  idAssociacao Int
+  associacao Associacao @relation(fields: [idAssociacao], references: [idAssociacao])
   nome String @db.VarChar(256)
   dataInicio DateTime @db.Date
   dataFim DateTime? @db.Date
