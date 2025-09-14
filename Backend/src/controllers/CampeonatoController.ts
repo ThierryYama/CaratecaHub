@@ -53,3 +53,82 @@ export const deletarCampeonato = async (req: Request, res: Response) => {
         res.status(400).json({ message: 'Erro ao remover campeonato', error: String(err) });
     }
 };
+
+export const adicionarCategoriaAoCampeonato = async (req: Request, res: Response) => {
+    try {
+        const idCampeonato = Number(req.params.idCampeonato);
+        const { idCategoria } = req.body as { idCategoria?: number };
+
+        if (!idCategoria) {
+            return res.status(400).json({ message: 'idCategoria é obrigatório' });
+        }
+
+        const [campeonato, categoria] = await Promise.all([
+            prisma.campeonato.findUnique({ where: { idCampeonato } }),
+            prisma.categoria.findUnique({ where: { idCategoria } })
+        ]);
+
+        if (!campeonato) return res.status(404).json({ message: 'Campeonato não encontrado' });
+        if (!categoria) return res.status(404).json({ message: 'Categoria não encontrada' });
+
+        const existente = await prisma.campeonatoModalidade.findFirst({
+            where: { idCampeonato, idCategoria }
+        });
+        if (existente) {
+            return res.status(409).json({ message: 'Categoria já vinculada a este campeonato', data: existente });
+        }
+
+        const link = await prisma.campeonatoModalidade.create({
+            data: { idCampeonato, idCategoria }
+        });
+        res.status(201).json(link);
+    } catch (err) {
+        res.status(400).json({ message: 'Erro ao vincular categoria ao campeonato', error: String(err) });
+    }
+};
+
+export const removerCategoriaDeCampeonato = async (req: Request, res: Response) => {
+    try {
+        const idCampeonato = Number(req.params.idCampeonato);
+        const idCategoria = Number(req.params.idCategoria);
+
+        if (isNaN(idCampeonato) || isNaN(idCategoria)) {
+            return res.status(400).json({ message: 'Parâmetros inválidos' });
+        }
+
+        const existente = await prisma.campeonatoModalidade.findFirst({
+            where: { idCampeonato, idCategoria }
+        });
+        if (!existente) {
+            return res.status(404).json({ message: 'Vínculo não encontrado' });
+        }
+
+        await prisma.campeonatoModalidade.delete({ where: { idCampeonatoModalidade: existente.idCampeonatoModalidade } });
+        res.status(204).send();
+    } catch (err) {
+        res.status(400).json({ message: 'Erro ao remover categoria do campeonato', error: String(err) });
+    }
+};
+
+export const listarCategoriasDeCampeonato = async (req: Request, res: Response) => {
+    try {
+        const idCampeonato = Number(req.params.idCampeonato);
+        if (isNaN(idCampeonato)) {
+            return res.status(400).json({ message: 'Parâmetro idCampeonato inválido' });
+        }
+
+        const campeonato = await prisma.campeonato.findUnique({ where: { idCampeonato } });
+        if (!campeonato) return res.status(404).json({ message: 'Campeonato não encontrado' });
+
+        const categorias = await prisma.campeonatoModalidade.findMany({
+            where: { idCampeonato },
+            include: { categoria: true },
+            orderBy: { idCampeonatoModalidade: 'asc' }
+        });
+
+        res.status(200).json(categorias.map(cm => cm.categoria));
+    } catch (err) {
+        res.status(400).json({ message: 'Erro ao listar categorias do campeonato', error: String(err) });
+    }
+};
+
