@@ -54,6 +54,7 @@ async function run() {
         pesoMax: null,
         graduacaoMin: '10° Kyu',
         graduacaoMax: '7° Kyu',
+        modalidade: 'KATA'
       },
       {
         nome: 'Kumite Adulto - Leve',
@@ -65,6 +66,7 @@ async function run() {
         pesoMax: '67.00',
         graduacaoMin: '3° Kyu',
         graduacaoMax: '1° Kyu',
+        modalidade: 'KUMITE'
       },
     ],
   });
