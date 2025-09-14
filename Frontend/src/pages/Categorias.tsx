@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Categoria, fetchCategorias, createCategoria, updateCategoria, deleteCategoria, CategoriaInput } from '@/services/api';
+import { Categoria, fetchCategorias, createCategoria, updateCategoria, deleteCategoria, CategoriaInput, Modalidade } from '@/services/api';
 
 const Categorias = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
@@ -32,6 +32,7 @@ const Categorias = () => {
   const [categoriaEditando, setCategoriaEditando] = useState<Categoria | null>(null);
   const [filtro, setFiltro] = useState('');
   const [filtroSexo, setFiltroSexo] = useState('todos');
+  const [filtroModalidade, setFiltroModalidade] = useState<'todos' | Modalidade>('todos');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -41,6 +42,7 @@ const Categorias = () => {
     faixaIdadeMin: 0,
     faixaIdadeMax: 0,
     genero: 'M',
+    modalidade: Modalidade.KUMITE,
     graduacaoMin: '',
     graduacaoMax: '',
     pesoMin: undefined,
@@ -102,6 +104,7 @@ const Categorias = () => {
       faixaIdadeMin: 0,
       faixaIdadeMax: 0,
       genero: 'M',
+      modalidade: Modalidade.KUMITE,
       graduacaoMin: '',
       graduacaoMax: '',
       pesoMin: undefined,
@@ -137,6 +140,7 @@ const Categorias = () => {
       faixaIdadeMin: categoria.faixaIdadeMin,
       faixaIdadeMax: categoria.faixaIdadeMax,
       genero: categoria.genero ?? 'M',
+      modalidade: categoria.modalidade,
       graduacaoMin: categoria.graduacaoMin,
       graduacaoMax: categoria.graduacaoMax,
       pesoMin: categoria.pesoMin,
@@ -152,7 +156,8 @@ const Categorias = () => {
   const categoriasFiltradas = categorias.filter(categoria => {
     const matchNome = categoria.nome.toLowerCase().includes(filtro.toLowerCase());
     const matchSexo = filtroSexo === 'todos' || categoria.genero === filtroSexo;
-    return matchNome && matchSexo;
+    const matchModalidade = filtroModalidade === 'todos' || categoria.modalidade === filtroModalidade;
+    return matchNome && matchSexo && matchModalidade;
   });
 
   return (
@@ -219,14 +224,30 @@ const Categorias = () => {
                         </div>
                       </div>
 
-                      <div>
-                        <Label htmlFor="descricao">Descrição</Label>
-                        <Input
-                          id="descricao"
-                          value={formData.descricao}
-                          onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
-                          placeholder="Opcional"
-                        />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="descricao">Descrição</Label>
+                          <Input
+                            id="descricao"
+                            value={formData.descricao}
+                            onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                            placeholder="Opcional"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="modalidade">Modalidade</Label>
+                          <Select value={formData.modalidade} onValueChange={(value) => setFormData(prev => ({ ...prev, modalidade: value as Modalidade }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a modalidade" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={Modalidade.KATA}>Kata</SelectItem>
+                              <SelectItem value={Modalidade.KUMITE}>Kumite</SelectItem>
+                              <SelectItem value={Modalidade.KATA_EQUIPE}>Kata Equipe</SelectItem>
+                              <SelectItem value={Modalidade.KUMITE_EQUIPE}>Kumite Equipe</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
@@ -335,6 +356,18 @@ const Categorias = () => {
                     <SelectItem value="Outro">Outro</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={filtroModalidade} onValueChange={(v) => setFiltroModalidade(v as any)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Modalidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Completo  </SelectItem>
+                    <SelectItem value={Modalidade.KATA}>Kata</SelectItem>
+                    <SelectItem value={Modalidade.KUMITE}>Kumite</SelectItem>
+                    <SelectItem value={Modalidade.KATA_EQUIPE}>Kata Equipe</SelectItem>
+                    <SelectItem value={Modalidade.KUMITE_EQUIPE}>Kumite Equipe</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardHeader>
             <CardContent>
@@ -342,6 +375,7 @@ const Categorias = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
+                    <TableHead>Modalidade</TableHead>
                     <TableHead>Sexo</TableHead>
                     <TableHead>Idade</TableHead>
                     <TableHead>Graduação</TableHead>
@@ -368,6 +402,15 @@ const Categorias = () => {
                           <div className="font-medium">{categoria.nome}</div>
                           <div className="text-sm text-gray-500">{categoria.descricao}</div>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-sm ${
+                          categoria.modalidade === 'KATA' || categoria.modalidade === 'KATA_EQUIPE'
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {categoria.modalidade.replace('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
+                        </span>
                       </TableCell>
                       <TableCell>{categoria.genero}</TableCell>
                       <TableCell>{categoria.faixaIdadeMin} - {categoria.faixaIdadeMax} anos</TableCell>
