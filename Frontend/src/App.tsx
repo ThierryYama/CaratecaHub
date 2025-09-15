@@ -30,6 +30,7 @@ const App = () => (
           <Route path="/gerenciamento-campeonato" element={<GerenciamentoCampeonato />} />
           <Route path="/chaveamento" element={<Chaveamento />} />
           <Route path="/meu-campeonato" element={<MeuCampeonato />} />
+          <Route path="/meu-campeonato/:id" element={<MeuCampeonato />} />
           <Route path="/chaveamentos-gerencia" element={<ChaveamentosGerencia />} />
           <Route path="/vincular-modalidades" element={<VincularModalidades />} />
           <Route path="/categorias" element={<Categorias />} />
