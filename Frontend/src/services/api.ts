@@ -52,6 +52,8 @@ export interface EquipeInput {
   atletasIds: number[];
 }
 
+
+
 export type EquipeUpdateInput = Partial<Pick<Equipe, 'nome' | 'descricao'>>;
 
 
@@ -151,6 +153,105 @@ export const vincularAtletaEquipe = async (idEquipe: number, idAtleta: number): 
 
 export const removerAtletaEquipe = async (idEquipe: number, idAtleta: number): Promise<void> => {
   await api.delete(`/removerAtletaEquipe/${idEquipe}/${idAtleta}`);
+};
+
+export enum Modalidade {
+  KATA = 'KATA',
+  KUMITE = 'KUMITE',
+  KATA_EQUIPE = 'KATA_EQUIPE',
+  KUMITE_EQUIPE = 'KUMITE_EQUIPE',
+}
+
+export enum Status {
+  PENDENTE = 'PENDENTE',
+  EM_ANDAMENTO = 'EM_ANDAMENTO',
+  FINALIZADO = 'FINALIZADO',
+  CANCELADO = 'CANCELADO',
+}
+
+export interface Endereco {
+  idEndereco: number;
+  rua: string;
+  numero: string;
+  complemento?: string | null;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+  idAssociacao?: number | null;
+}
+
+export interface Campeonato {
+  idCampeonato: number;
+  idAssociacao: number;
+  idEndereco?: number;
+  endereco: Endereco;
+  nome: string;
+  dataInicio: string;
+  dataFim?: string | null;
+  descricao?: string | null;
+  status: Status;
+  modalidades: Categoria[];
+}
+
+export type EnderecoInput = Omit<Endereco, 'idEndereco'>;
+
+export interface CampeonatoInput {
+  nome: string;
+  dataInicio: string;
+  dataFim?: string;
+  descricao?: string;
+  status?: Status;
+  idAssociacao: number;
+  endereco?: EnderecoInput;
+  idEndereco?: number;
+}
+
+export const fetchCampeonatos = async (): Promise<Campeonato[]> => {
+  const response = await api.get('/listarCampeonatos');
+  return response.data;
+};
+
+export const fetchCampeonatosPorAssociacao = async (idAssociacao: number): Promise<Campeonato[]> => {
+  const response = await api.get(`/listarCampeonatosPorAssociacao/${idAssociacao}`);
+  return response.data;
+};
+
+export const fetchCampeonatoById = async (id: number): Promise<Campeonato> => {
+    const response = await api.get(`/listarCampeonato/${id}`);
+    return response.data;
+};
+
+export const createCampeonato = async (campeonato: CampeonatoInput): Promise<Campeonato> => {
+  const response = await api.post('/cadastrarCampeonato', campeonato);
+  return response.data;
+};
+
+export const updateCampeonato = async (id: number, campeonato: Partial<CampeonatoInput>): Promise<Campeonato> => {
+  const response = await api.put(`/atualizarCampeonato/${id}`, campeonato);
+  return response.data;
+};
+
+export const deleteCampeonato = async (id: number): Promise<void> => {
+  await api.delete(`/deletarCampeonato/${id}`);
+};
+
+export const adicionarCategoriaAoCampeonato = async (idCampeonato: number, idCategoria: number): Promise<void> => {
+  await api.post(`/adicionarCategoriaAoCampeonato/${idCampeonato}`, { idCategoria });
+};
+
+export const removerCategoriaDeCampeonato = async (idCampeonato: number, idCategoria: number): Promise<void> => {
+  await api.delete(`/removerCategoriaDeCampeonato/${idCampeonato}/${idCategoria}`);
+};
+
+export const listarCategoriasDeCampeonato = async (idCampeonato: number): Promise<Categoria[]> => {
+  const response = await api.get(`/listarCategoriasDeCampeonato/${idCampeonato}`);
+  return response.data;
+};
+
+export const atualizarEnderecoCampeonato = async (idCampeonato: number, endereco: Partial<EnderecoInput>): Promise<Endereco> => {
+  const response = await api.patch(`/atualizarEnderecoCampeonato/${idCampeonato}`, endereco);
+  return response.data;
 };
 
 
