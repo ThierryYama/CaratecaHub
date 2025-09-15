@@ -213,7 +213,7 @@ export const fetchCampeonatos = async (): Promise<Campeonato[]> => {
 };
 
 export const fetchCampeonatosPorAssociacao = async (idAssociacao: number): Promise<Campeonato[]> => {
-  const response = await api.get(`/listarCampeonatosPorAssociacao/${idAssociacao}`);
+  const response = await api.get(`/listarCampeonatosPorIdDeAssociacao/${idAssociacao}`);
   return response.data;
 };
 
