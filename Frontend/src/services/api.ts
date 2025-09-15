@@ -228,7 +228,14 @@ export const createCampeonato = async (campeonato: CampeonatoInput): Promise<Cam
 };
 
 export const updateCampeonato = async (id: number, campeonato: Partial<CampeonatoInput>): Promise<Campeonato> => {
-  const response = await api.put(`/atualizarCampeonato/${id}`, campeonato);
+  const payload: any = { ...campeonato };
+  if (payload.dataInicio && !payload.dataInicio.includes('T')) {
+    payload.dataInicio = `${payload.dataInicio}T00:00:00.000Z`;
+  }
+  if (payload.dataFim && !payload.dataFim.includes('T')) {
+    payload.dataFim = `${payload.dataFim}T00:00:00.000Z`;
+  }
+  const response = await api.put(`/atualizarCampeonato/${id}`, payload);
   return response.data;
 };
 
@@ -250,8 +257,8 @@ export const listarCategoriasDeCampeonato = async (idCampeonato: number): Promis
 };
 
 export const atualizarEnderecoCampeonato = async (idCampeonato: number, endereco: Partial<EnderecoInput>): Promise<Endereco> => {
-  const response = await api.patch(`/atualizarEnderecoCampeonato/${idCampeonato}`, endereco);
-  return response.data;
+  const response = await api.put(`/atualizarEnderecoCampeonato/${idCampeonato}`, endereco);
+  return response.data.endereco || response.data;
 };
 
 
