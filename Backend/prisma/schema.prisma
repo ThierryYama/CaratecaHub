@@ -44,6 +44,7 @@ model Associacao {
   campeonatos  Campeonato[]
   atletas      Atleta[]
   equipes      Equipe[]
+  enderecos Endereco[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime? @updatedAt
   deletedAt    DateTime?
@@ -89,23 +90,11 @@ createdAt DateTime @default(now())
 @@unique([idEquipe, idAtleta]) 
 }
 
-enum Modalidade {
-  KATA
-  KUMITE
-  KATA_EQUIPE
-  KUMITE_EQUIPE
-}
-
-enum Status {
-  PENDENTE
-  EM_ANDAMENTO
-  FINALIZADO
-  CANCELADO
-}
-
 model Campeonato {
   idCampeonato Int @id @default(autoincrement())
   idAssociacao Int
+  idEndereco Int
+  endereco Endereco @relation(fields: [idEndereco], references: [idEndereco])
   associacao Associacao @relation(fields: [idAssociacao], references: [idAssociacao])
   nome String @db.VarChar(256)
   dataInicio DateTime @db.Date
@@ -123,4 +112,35 @@ model CampeonatoModalidade{
   categoria Categoria? @relation(fields: [idCategoria], references: [idCategoria])
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
+}
+
+model Endereco{
+  idEndereco Int @id @default(autoincrement())
+  rua String @db.VarChar(256)
+  numero String @db.VarChar(10)
+  complemento String? @db.VarChar(100)
+  bairro String @db.VarChar(45)
+  cidade String @db.VarChar(45)
+  estado String @db.VarChar(45)
+  cep String @db.VarChar(10)
+  campeonatos  Campeonato[]
+  idAssociacao Int?
+  associacao Associacao? @relation(fields: [idAssociacao], references: [idAssociacao])
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+}
+
+
+enum Modalidade {
+  KATA
+  KUMITE
+  KATA_EQUIPE
+  KUMITE_EQUIPE
+}
+
+enum Status {
+  PENDENTE
+  EM_ANDAMENTO
+  FINALIZADO
+  CANCELADO
 }
