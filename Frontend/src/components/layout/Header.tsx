@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -7,15 +8,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
+  onNovoCampeonato?: () => void;
 }
 
-const Header = ({ onToggleSidebar }: HeaderProps) => {
+const Header = ({ onToggleSidebar, onNovoCampeonato }: HeaderProps) => {
+  const navigate = useNavigate();
   const handleLogout = () => {
     // Implementar lógica de logout aqui
     console.log('Logout realizado');
@@ -47,11 +49,14 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
       </div>
 
       <div className="flex items-center gap-4">
-        <Button 
+        <Button
+          onClick={() => {
+            if (onNovoCampeonato) return onNovoCampeonato();
+            navigate('/campeonatos?novo=1');
+          }}
           className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
         >
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Campeonato
+          <Plus className="w-4 h-4 mr-2" /> Novo Campeonato
         </Button>
 
         <DropdownMenu>
