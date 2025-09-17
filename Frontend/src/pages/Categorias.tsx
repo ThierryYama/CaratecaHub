@@ -31,7 +31,7 @@ const Categorias = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<Categoria | null>(null);
   const [filtro, setFiltro] = useState('');
-  const [filtroSexo, setFiltroSexo] = useState('todos');
+  const [filtroSexo, setFiltroSexo] = useState<'todos' | 'Masculino' | 'Feminino' | 'Outro'>('todos');
   const [filtroModalidade, setFiltroModalidade] = useState<'todos' | Modalidade>('todos');
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -41,7 +41,7 @@ const Categorias = () => {
     descricao: '',
     faixaIdadeMin: 0,
     faixaIdadeMax: 0,
-    genero: 'M',
+    genero: 'Masculino',
     modalidade: Modalidade.KUMITE,
     graduacaoMin: '',
     graduacaoMax: '',
@@ -103,7 +103,7 @@ const Categorias = () => {
       descricao: '',
       faixaIdadeMin: 0,
       faixaIdadeMax: 0,
-      genero: 'M',
+  genero: 'Masculino',
       modalidade: Modalidade.KUMITE,
       graduacaoMin: '',
       graduacaoMax: '',
@@ -139,7 +139,7 @@ const Categorias = () => {
       descricao: categoria.descricao ?? '',
       faixaIdadeMin: categoria.faixaIdadeMin,
       faixaIdadeMax: categoria.faixaIdadeMax,
-      genero: categoria.genero ?? 'M',
+      genero: categoria.genero ?? 'Masculino',
       modalidade: categoria.modalidade,
       graduacaoMin: categoria.graduacaoMin,
       graduacaoMax: categoria.graduacaoMax,
@@ -155,7 +155,7 @@ const Categorias = () => {
 
   const categoriasFiltradas = categorias.filter(categoria => {
     const matchNome = categoria.nome.toLowerCase().includes(filtro.toLowerCase());
-    const matchSexo = filtroSexo === 'todos' || categoria.genero === filtroSexo;
+  const matchSexo = filtroSexo === 'todos' || categoria.genero === filtroSexo;
     const matchModalidade = filtroModalidade === 'todos' || categoria.modalidade === filtroModalidade;
     return matchNome && matchSexo && matchModalidade;
   });
@@ -216,8 +216,8 @@ const Categorias = () => {
                               <SelectValue placeholder="Selecione o sexo" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="M">Masculino</SelectItem>
-                              <SelectItem value="F">Feminino</SelectItem>
+                              <SelectItem value="Masculino">Masculino</SelectItem>
+                              <SelectItem value="Feminino">Feminino</SelectItem>
                               <SelectItem value="Outro">Outro</SelectItem>
                             </SelectContent>
                           </Select>
@@ -345,14 +345,14 @@ const Categorias = () => {
                     className="w-48"
                   />
                 </div>
-                <Select value={filtroSexo} onValueChange={setFiltroSexo}>
+                <Select value={filtroSexo} onValueChange={(v) => setFiltroSexo(v as any)}>
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="M">Masculino</SelectItem>
-                    <SelectItem value="F">Feminino</SelectItem>
+                    <SelectItem value="Masculino">Masculino</SelectItem>
+                    <SelectItem value="Feminino">Feminino</SelectItem>
                     <SelectItem value="Outro">Outro</SelectItem>
                   </SelectContent>
                 </Select>
