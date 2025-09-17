@@ -16,6 +16,7 @@ export interface Categoria {
   faixaIdadeMin: number;
   faixaIdadeMax: number;
   genero: 'Masculino' | 'Feminino' | 'Outro';
+  modalidade: Modalidade;
   descricao?: string | null;
   pesoMin?: number;
   pesoMax?: number;
