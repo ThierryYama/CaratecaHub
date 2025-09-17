@@ -54,10 +54,8 @@ const Sidebar = ({ isCollapsed: externalCollapsed, onItemClick, onToggle }: Side
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Persisted campeonato context (survives route changes)
   const [persistedCampeonatoId, setPersistedCampeonatoId] = useState<string | undefined>(undefined);
 
-  // Load persisted context on mount
   useEffect(() => {
     const stored = localStorage.getItem('currentCampeonatoId');
     if (stored) setPersistedCampeonatoId(stored);
@@ -67,7 +65,6 @@ const Sidebar = ({ isCollapsed: externalCollapsed, onItemClick, onToggle }: Side
   const execMatch = regex.exec(location.pathname);
   const routeCampeonatoId = execMatch ? execMatch[1] : undefined;
 
-  // Sync when user navigates directly to a campeonato route
   useEffect(() => {
     if (routeCampeonatoId && routeCampeonatoId !== persistedCampeonatoId) {
       localStorage.setItem('currentCampeonatoId', routeCampeonatoId);
@@ -92,7 +89,7 @@ const Sidebar = ({ isCollapsed: externalCollapsed, onItemClick, onToggle }: Side
         { id: 'ranking', label: 'Ranking', icon: Medal, path: `/meu-campeonato/${effectiveId}/ranking` },
         { id: 'resultados', label: 'Resultados', icon: Trophy, path: `/meu-campeonato/${effectiveId}/resultados` },
         { id: 'inscricoes', label: 'Inscrições', icon: UserPlus, path: `/meu-campeonato/${effectiveId}/inscricoes` },
-        { id: 'modalidades', label: 'Modalidades', icon: Link, path: `/meu-campeonato/${effectiveId}/modalidades` },
+        { id: 'modalidades', label: 'Categorias', icon: Link, path: `/meu-campeonato/${effectiveId}/modalidades` },
         { id: 'sair-contexto', label: 'Sair', icon: XCircle, path: '#' },
       ]
     };
@@ -112,7 +109,6 @@ const Sidebar = ({ isCollapsed: externalCollapsed, onItemClick, onToggle }: Side
       navigate('/campeonatos');
       return;
     }
-    // Persist campeonato context when clicking parent or child (except sair)
     if (item.path.startsWith('/meu-campeonato/')) {
       const match = /\/meu-campeonato\/(\d+)/.exec(item.path);
       if (match) {
