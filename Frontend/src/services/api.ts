@@ -9,12 +9,13 @@ const api = axios.create({
   },
 });
 
+
 export interface Categoria {
   idCategoria: number;
   nome: string;
   faixaIdadeMin: number;
   faixaIdadeMax: number;
-  genero: 'M' | 'F' | 'Outro';
+  genero: 'Masculino' | 'Feminino' | 'Outro';
   descricao?: string | null;
   pesoMin?: number;
   pesoMax?: number;
@@ -102,7 +103,7 @@ export const deleteAtleta = async (id: number): Promise<void> => {
 export const fetchCategorias = async (): Promise<Categoria[]> => {
     try{
         const response = await api.get("/listarCategorias");
-        return response.data;
+    return response.data;
     } catch (error) {
         console.error("Error fetching categorias:", error);
         throw error;
@@ -110,13 +111,13 @@ export const fetchCategorias = async (): Promise<Categoria[]> => {
 };
 
 export const createCategoria = async (categoria: CategoriaInput): Promise<Categoria> => {
-    const response = await api.post('/cadastrarCategoria', categoria);
-    return response.data;
+  const response = await api.post('/cadastrarCategoria', categoria);
+  return response.data;
 };
 
 export const updateCategoria = async (id: number, categoria: Partial<CategoriaInput>): Promise<Categoria> => {
-    const response = await api.put(`/atualizarCategoria/${id}`, categoria);
-    return response.data;
+  const response = await api.put(`/atualizarCategoria/${id}`, categoria);
+  return response.data;
 };
 
 export const deleteCategoria = async (id: number): Promise<void> => {
