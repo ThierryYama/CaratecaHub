@@ -453,10 +453,10 @@ const MeuCampeonato = () => {
                 <Button
                   variant="outline"
                   className="h-16 flex flex-col gap-1"
-                  onClick={() => navigate('/vincular-modalidades')}
+                  onClick={() => campeonatoId && navigate(`/meu-campeonato/${campeonatoId}/modalidades`)}
                 >
                   <Link className="w-5 h-5" />
-                  <span className="text-xs">Vincular Modalidades</span>
+                  <span className="text-xs">Vincular Categorias</span>
                 </Button>
                 <Button variant="outline" className="h-16 flex flex-col gap-1">
                   <List className="w-5 h-5" />
