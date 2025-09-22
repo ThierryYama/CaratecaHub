@@ -140,7 +140,7 @@ model InscricaoAtleta {
   idCampeonatoModalidade Int
   atleta Atleta @relation(fields: [idAtleta], references: [idAtleta])
   campeonatoModalidade CampeonatoModalidade @relation(fields: [idCampeonatoModalidade], references: [idCampeonatoModalidade])
-  status Status @default(EM_ANDAMENTO)
+  status StatusInscricao @default(AGUARDANDO)
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
   @@unique([idAtleta, idCampeonatoModalidade])
@@ -152,13 +152,11 @@ model InscricaoEquipe {
   idCampeonatoModalidade Int
   equipe Equipe @relation(fields: [idEquipe], references: [idEquipe])
   campeonatoModalidade CampeonatoModalidade @relation(fields: [idCampeonatoModalidade], references: [idCampeonatoModalidade])
-  status Status @default(EM_ANDAMENTO)
+  status StatusInscricao @default(AGUARDANDO)
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
   @@unique([idEquipe, idCampeonatoModalidade])
 }
-
-
 
 enum Modalidade {
   KATA
@@ -172,4 +170,9 @@ enum Status {
   EM_ANDAMENTO
   FINALIZADO
   CANCELADO
+}
+
+enum StatusInscricao {
+  AGUARDANDO
+  INSCRITO
 }
