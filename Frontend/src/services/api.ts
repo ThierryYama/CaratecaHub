@@ -171,6 +171,11 @@ export enum Status {
   CANCELADO = 'CANCELADO',
 }
 
+export enum StatusInscricao {
+  AGUARDANDO = 'AGUARDANDO',
+  INSCRITO = 'INSCRITO',
+}
+
 export interface Endereco {
   idEndereco: number;
   rua: string;
@@ -261,6 +266,124 @@ export const listarCategoriasDeCampeonato = async (idCampeonato: number): Promis
 export const atualizarEnderecoCampeonato = async (idCampeonato: number, endereco: Partial<EnderecoInput>): Promise<Endereco> => {
   const response = await api.put(`/atualizarEnderecoCampeonato/${idCampeonato}`, endereco);
   return response.data.endereco || response.data;
+};
+
+export interface CampeonatoModalidadeWithCategoria {
+  idCampeonatoModalidade: number;
+  idCampeonato: number;
+  idCategoria: number;
+  categoria: Categoria;
+}
+
+export interface CampeonatoDetalhado extends Omit<Campeonato, 'modalidades'> {
+  modalidades: CampeonatoModalidadeWithCategoria[];
+}
+
+export const fetchCampeonatoDetalhado = async (id: number): Promise<CampeonatoDetalhado> => {
+  const response = await api.get(`/listarCampeonato/${id}`);
+  return response.data;
+};
+
+export interface CampeonatoModalidade {
+  idCampeonatoModalidade: number;
+  idCampeonato: number;
+  idCategoria: number;
+  categoria?: Categoria;
+  campeonato?: Campeonato;
+}
+
+export interface InscricaoAtleta {
+  idInscricaoAtleta: number;
+  idAtleta: number;
+  idCampeonatoModalidade: number;
+  status: StatusInscricao;
+  atleta?: Atleta;
+  campeonatoModalidade?: CampeonatoModalidade;
+}
+
+export interface InscricaoEquipe {
+  idInscricaoEquipe: number;
+  idEquipe: number;
+  idCampeonatoModalidade: number;
+  status: StatusInscricao;
+  equipe?: Equipe;
+  campeonatoModalidade?: CampeonatoModalidade;
+}
+
+export type InscricaoAtletaInput = {
+  idAtleta: number;
+  idCampeonatoModalidade: number;
+  status?: StatusInscricao;
+};
+
+export type InscricaoAtletaUpdateInput = Partial<Pick<InscricaoAtleta, 'status'>>;
+
+export type InscricaoEquipeInput = {
+  idEquipe: number;
+  idCampeonatoModalidade: number;
+  status?: StatusInscricao;
+};
+
+export type InscricaoEquipeUpdateInput = Partial<Pick<InscricaoEquipe, 'status'>>;
+
+export const fetchInscricoesAtletas = async (): Promise<InscricaoAtleta[]> => {
+  const response = await api.get('/listarInscricoesAtletas');
+  return response.data;
+};
+
+export const fetchInscricaoAtletaById = async (id: number): Promise<InscricaoAtleta> => {
+  const response = await api.get(`/listarInscricaoAtleta/${id}`);
+  return response.data;
+};
+
+export const fetchInscricoesAtletaPorIdDeAtleta = async (idAtleta: number): Promise<InscricaoAtleta[]> => {
+  const response = await api.get(`/listarInscricoesAtletaPorAtleta/${idAtleta}`);
+  return response.data;
+};
+
+export const fetchInscricoesAtletaPorIdDeCampeonatoModalidade = async (idCampeonatoModalidade: number): Promise<InscricaoAtleta[]> => {
+  const response = await api.get(`/listarInscricoesAtletaPorCampeonato/${idCampeonatoModalidade}`);
+  return response.data;
+};
+
+export const createInscricaoAtleta = async (data: InscricaoAtletaInput): Promise<InscricaoAtleta> => {
+  const response = await api.post('/cadastrarInscricaoAtleta', data);
+  return response.data;
+};
+
+export const updateInscricaoAtleta = async (id: number, data: InscricaoAtletaUpdateInput): Promise<InscricaoAtleta> => {
+  const response = await api.put(`/atualizarInscricaoAtleta/${id}`, data);
+  return response.data;
+};
+
+export const fetchInscricoesEquipes = async (): Promise<InscricaoEquipe[]> => {
+  const response = await api.get('/listarInscricoesEquipes');
+  return response.data;
+};
+
+export const fetchInscricaoEquipeById = async (id: number): Promise<InscricaoEquipe> => {
+  const response = await api.get(`/listarInscricaoEquipe/${id}`);
+  return response.data;
+};
+
+export const fetchInscricoesEquipePorIdDeEquipe = async (idEquipe: number): Promise<InscricaoEquipe[]> => {
+  const response = await api.get(`/listarInscricoesEquipePorEquipe/${idEquipe}`);
+  return response.data;
+};
+
+export const fetchInscricoesEquipePorIdDeCampeonatoModalidade = async (idCampeonatoModalidade: number): Promise<InscricaoEquipe[]> => {
+  const response = await api.get(`/listarInscricoesEquipePorCampeonato/${idCampeonatoModalidade}`);
+  return response.data;
+};
+
+export const createInscricaoEquipe = async (data: InscricaoEquipeInput): Promise<InscricaoEquipe> => {
+  const response = await api.post('/cadastrarInscricaoEquipe', data);
+  return response.data;
+};
+
+export const updateInscricaoEquipe = async (id: number, data: InscricaoEquipeUpdateInput): Promise<InscricaoEquipe> => {
+  const response = await api.put(`/atualizarInscricaoEquipe/${id}`, data);
+  return response.data;
 };
 
 
