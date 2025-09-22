@@ -62,6 +62,7 @@ model Atleta {
   email          String     @db.VarChar(100)
   associacao     Associacao @relation(fields: [idAssociacao], references: [idAssociacao])
   equipes        EquipeAtleta[]
+  inscricoes     InscricaoAtleta[]
   idAssociacao   Int
   createdAt      DateTime   @default(now())
   updatedAt      DateTime?  @updatedAt
@@ -75,6 +76,7 @@ descricao String? @db.VarChar(255)
 idAssociacao Int 
 associacao Associacao @relation(fields: [idAssociacao], references: [idAssociacao]) 
 membros EquipeAtleta[] 
+inscricoes InscricaoEquipe[]
 createdAt DateTime @default(now()) 
 updatedAt DateTime? @updatedAt 
 deletedAt DateTime? 
@@ -110,6 +112,8 @@ model CampeonatoModalidade{
   idCategoria Int
   campeonato Campeonato @relation(fields: [idCampeonato], references: [idCampeonato])
   categoria Categoria? @relation(fields: [idCategoria], references: [idCategoria])
+  inscricoesAtleta InscricaoAtleta[]
+  inscricoesEquipe InscricaoEquipe[]
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
 }
@@ -129,6 +133,31 @@ model Endereco{
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
 }
+
+model InscricaoAtleta {
+  idInscricaoAtleta Int @id @default(autoincrement())
+  idAtleta Int
+  idCampeonatoModalidade Int
+  atleta Atleta @relation(fields: [idAtleta], references: [idAtleta])
+  campeonatoModalidade CampeonatoModalidade @relation(fields: [idCampeonatoModalidade], references: [idCampeonatoModalidade])
+  status Status @default(EM_ANDAMENTO)
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+  @@unique([idAtleta, idCampeonatoModalidade])
+}
+
+model InscricaoEquipe {
+  idInscricaoEquipe Int @id @default(autoincrement())
+  idEquipe Int
+  idCampeonatoModalidade Int
+  equipe Equipe @relation(fields: [idEquipe], references: [idEquipe])
+  campeonatoModalidade CampeonatoModalidade @relation(fields: [idCampeonatoModalidade], references: [idCampeonatoModalidade])
+  status Status @default(EM_ANDAMENTO)
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+  @@unique([idEquipe, idCampeonatoModalidade])
+}
+
 
 
 enum Modalidade {
