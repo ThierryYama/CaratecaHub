@@ -27,11 +27,10 @@ import { Categoria, fetchCategorias, createCategoria, updateCategoria, deleteCat
 
 const Categorias = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
-  const [activeItem, setActiveItem] = useState('categorias');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<Categoria | null>(null);
   const [filtro, setFiltro] = useState('');
-  const [filtroSexo, setFiltroSexo] = useState<'todos' | 'Masculino' | 'Feminino' | 'Outro'>('todos');
+  const [filtroSexo, setFiltroSexo] = useState<'todos' | 'Masculino' | 'Feminino' | 'Outro' | 'Misto'>('todos');
   const [filtroModalidade, setFiltroModalidade] = useState<'todos' | Modalidade>('todos');
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -164,15 +163,16 @@ const Categorias = () => {
     <div className="h-screen flex w-full bg-gray-50 overflow-hidden">
       <Sidebar
         isCollapsed={isSidebarCollapsed}
-        onItemClick={(item) => {
-          setActiveItem(item);
+        onItemClick={() => {
           if (window.innerWidth < 1024) setIsSidebarCollapsed(true);
         }}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
       {!isSidebarCollapsed && (
-        <div
+        <button
+          type="button"
           className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+          aria-label="Fechar menu lateral"
           onClick={() => setIsSidebarCollapsed(true)}
         />
       )}
@@ -210,15 +210,18 @@ const Categorias = () => {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="sexo">Sexo</Label>
+                          <Label htmlFor="sexo">Gênero</Label>
                           <Select value={formData.genero} onValueChange={(value) => setFormData(prev => ({ ...prev, genero: value as Categoria['genero'] }))}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecione o sexo" />
+                              <SelectValue placeholder="Selecione o gênero" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Masculino">Masculino</SelectItem>
                               <SelectItem value="Feminino">Feminino</SelectItem>
                               <SelectItem value="Outro">Outro</SelectItem>
+                              {([Modalidade.KATA_EQUIPE, Modalidade.KUMITE_EQUIPE] as Modalidade[]).includes(formData.modalidade) && (
+                                <SelectItem value="Misto">Misto</SelectItem>
+                              )}
                             </SelectContent>
                           </Select>
                         </div>
@@ -328,7 +331,10 @@ const Categorias = () => {
                           Cancelar
                         </Button>
                         <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                          {createMutation.isPending || updateMutation.isPending ? 'Salvando...' : (categoriaEditando ? 'Atualizar' : 'Criar')}
+                          {(() => {
+                            if (createMutation.isPending || updateMutation.isPending) return 'Salvando...';
+                            return categoriaEditando ? 'Atualizar' : 'Criar';
+                          })()}
                         </Button>
                       </div>
                     </form>
@@ -354,6 +360,7 @@ const Categorias = () => {
                     <SelectItem value="Masculino">Masculino</SelectItem>
                     <SelectItem value="Feminino">Feminino</SelectItem>
                     <SelectItem value="Outro">Outro</SelectItem>
+                    <SelectItem value="Misto">Misto</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={filtroModalidade} onValueChange={(v) => setFiltroModalidade(v as any)}>
@@ -416,13 +423,13 @@ const Categorias = () => {
                       <TableCell>{categoria.faixaIdadeMin} - {categoria.faixaIdadeMax} anos</TableCell>
                       <TableCell>{categoria.graduacaoMin} - {categoria.graduacaoMax}</TableCell>
                       <TableCell>
-                        {categoria.pesoMin != null && categoria.pesoMax != null
-                          ? `${categoria.pesoMin}kg - ${categoria.pesoMax}kg`
-                          : categoria.pesoMin != null
-                            ? `>= ${categoria.pesoMin}kg`
-                            : categoria.pesoMax != null
-                              ? `<= ${categoria.pesoMax}kg`
-                              : '-'}
+                        {(() => {
+                          const { pesoMin, pesoMax } = categoria as any;
+                          if (pesoMin != null && pesoMax != null) return `${pesoMin}kg - ${pesoMax}kg`;
+                          if (pesoMin != null) return `>= ${pesoMin}kg`;
+                          if (pesoMax != null) return `<= ${pesoMax}kg`;
+                          return '-';
+                        })()}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
