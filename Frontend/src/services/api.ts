@@ -1,4 +1,5 @@
 import axios from "axios";
+export type Genero = 'Masculino' | 'Feminino' | 'Outro' | 'Misto';
 
 
 const api = axios.create({
@@ -15,7 +16,7 @@ export interface Categoria {
   nome: string;
   faixaIdadeMin: number;
   faixaIdadeMax: number;
-  genero: 'Masculino' | 'Feminino' | 'Outro';
+  genero: Genero;
   modalidade: Modalidade;
   descricao?: string | null;
   pesoMin?: number;
@@ -28,7 +29,7 @@ export interface Atleta {
   idAtleta: number;
   nome: string;
   dataNascimento: string;
-  genero: 'Masculino' | 'Feminino' | 'Outro';
+  genero: Exclude<Genero, 'Misto'>;
   graduacao: string;
   peso: number;
   idAssociacao: number;
@@ -42,6 +43,7 @@ export interface Equipe {
   nome: string;
   descricao?: string | null;
   idAssociacao: number;
+  genero: Genero;
   membros: {
     atleta: Atleta;
   }[];
@@ -52,11 +54,12 @@ export interface EquipeInput {
   descricao?: string;
   idAssociacao: number;
   atletasIds: number[];
+  genero?: Genero;
 }
 
 
 
-export type EquipeUpdateInput = Partial<Pick<Equipe, 'nome' | 'descricao'>>;
+export type EquipeUpdateInput = Partial<Pick<Equipe, 'nome' | 'descricao' | 'genero'>>;
 
 
 export type CategoriaInput = Omit<Categoria, 'idCategoria'>;
