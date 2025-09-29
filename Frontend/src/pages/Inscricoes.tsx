@@ -19,7 +19,6 @@ import {
   fetchInscricoesEquipePorIdDeCampeonatoModalidade,
   updateInscricaoAtleta,
   updateInscricaoEquipe,
-  Categoria,
   Modalidade,
   InscricaoAtleta,
   InscricaoEquipe,
@@ -29,12 +28,12 @@ import {
 import { AlertCircle, CheckCircle2, Users, UserRound } from 'lucide-react';
 
 const modalidadeLabel = (m?: Modalidade) => (m ?? '').toString().replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-const isEquipeModalidade = (m?: Modalidade) => m === 'KATA_EQUIPE' || m === 'KUMITE_EQUIPE';
-const isIndividualModalidade = (m?: Modalidade) => m === 'KATA' || m === 'KUMITE';
+const isEquipeModalidade = (m?: string) => m === 'KATA_EQUIPE' || m === 'KUMITE_EQUIPE';
+const isIndividualModalidade = (m?: string) => m === 'KATA' || m === 'KUMITE';
 
 const Inscricoes: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeMenuItem, setActiveMenuItem] = useState('inscricoes');
+  // const [activeMenuItem, setActiveMenuItem] = useState('inscricoes');
   const [tab, setTab] = useState<'atletas' | 'equipes'>('atletas');
   const [selectedModalidadeId, setSelectedModalidadeId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
@@ -51,26 +50,29 @@ const Inscricoes: React.FC = () => {
   const queryClient = useQueryClient();
 
   const toggleSidebar = () => setSidebarCollapsed(!sidebarCollapsed);
-  const handleMenuItemClick = (id: string) => setActiveMenuItem(id);
+  const handleMenuItemClick = (_id: string) => {};
 
-  const { data: camp, isLoading: loadingCamp, isError: errCamp, refetch: refetchCamp } = useQuery<CampeonatoDetalhado>({
+  const { data: camp, refetch: refetchCamp } = useQuery<CampeonatoDetalhado>({
     queryKey: ['campeonatoDetalhado', campeonatoId],
-    queryFn: () => fetchCampeonatoDetalhado(campeonatoId!),
+    queryFn: () => {
+      if (!campeonatoId) throw new Error('Campeonato não definido');
+      return fetchCampeonatoDetalhado(campeonatoId);
+    },
     enabled: !!campeonatoId,
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
 
   const categoriasModalidades = camp?.modalidades ?? [];
-  const modalidadesIndividuais = categoriasModalidades.filter(m => isIndividualModalidade(m.categoria?.modalidade as Modalidade));
-  const modalidadesEquipe = categoriasModalidades.filter(m => isEquipeModalidade(m.categoria?.modalidade as Modalidade));
+  const modalidadesIndividuais = categoriasModalidades.filter(m => isIndividualModalidade(m.categoria?.modalidade));
+  const modalidadesEquipe = categoriasModalidades.filter(m => isEquipeModalidade(m.categoria?.modalidade));
 
-  const { data: atletas, isLoading: loadingAtletas } = useQuery({
+  const { data: atletas } = useQuery({
     queryKey: ['atletas'],
     queryFn: fetchAtletas,
     enabled: tab === 'atletas',
   });
-  const { data: equipes, isLoading: loadingEquipes } = useQuery({
+  const { data: equipes } = useQuery({
     queryKey: ['equipes'],
     queryFn: fetchEquipes,
     enabled: tab === 'equipes',
@@ -99,7 +101,7 @@ const Inscricoes: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inscricoesAtletasPorModalidade', selectedModalidadeId] });
       toast({ title: 'Atleta inscrito com sucesso' });
     },
-    onError: (e: any) => toast({ title: 'Falha ao inscrever atleta', description: e?.message || 'Tente novamente', variant: 'destructive' as any }),
+  onError: (e: any) => toast({ title: 'Falha ao inscrever atleta', description: e?.message || 'Tente novamente', variant: 'destructive' }),
   });
 
   const confirmarInscricaoAtleta = useMutation({
@@ -108,7 +110,7 @@ const Inscricoes: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inscricoesAtletasPorModalidade', selectedModalidadeId] });
       toast({ title: 'Inscrição confirmada' });
     },
-    onError: (e: any) => toast({ title: 'Falha ao confirmar inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' as any }),
+  onError: (e: any) => toast({ title: 'Falha ao confirmar inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
   });
 
   const inscreverEquipe = useMutation({
@@ -123,7 +125,7 @@ const Inscricoes: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inscricoesEquipesPorModalidade', selectedModalidadeId] });
       toast({ title: 'Equipe inscrita com sucesso' });
     },
-    onError: (e: any) => toast({ title: 'Falha ao inscrever equipe', description: e?.message || 'Tente novamente', variant: 'destructive' as any }),
+  onError: (e: any) => toast({ title: 'Falha ao inscrever equipe', description: e?.message || 'Tente novamente', variant: 'destructive' }),
   });
 
   const confirmarInscricaoEquipe = useMutation({
@@ -132,7 +134,7 @@ const Inscricoes: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inscricoesEquipesPorModalidade', selectedModalidadeId] });
       toast({ title: 'Inscrição confirmada' });
     },
-    onError: (e: any) => toast({ title: 'Falha ao confirmar inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' as any }),
+  onError: (e: any) => toast({ title: 'Falha ao confirmar inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
   });
 
   const desvincularInscricaoAtleta = useMutation({
@@ -141,7 +143,7 @@ const Inscricoes: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inscricoesAtletasPorModalidade', selectedModalidadeId] });
       toast({ title: 'Inscrição removida' });
     },
-    onError: (e: any) => toast({ title: 'Falha ao desvincular inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' as any }),
+  onError: (e: any) => toast({ title: 'Falha ao desvincular inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
   });
 
   const desvincularInscricaoEquipe = useMutation({
@@ -150,7 +152,7 @@ const Inscricoes: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inscricoesEquipesPorModalidade', selectedModalidadeId] });
       toast({ title: 'Inscrição removida' });
     },
-    onError: (e: any) => toast({ title: 'Falha ao desvincular inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' as any }),
+  onError: (e: any) => toast({ title: 'Falha ao desvincular inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
   });
 
   const selectableModalidades = tab === 'atletas' ? modalidadesIndividuais : modalidadesEquipe;
@@ -169,11 +171,13 @@ const Inscricoes: React.FC = () => {
     if (selectedModalidadeId == null || !list.some(m => m.idCampeonatoModalidade === selectedModalidadeId)) {
       setSelectedModalidadeId(list[0].idCampeonatoModalidade);
     }
-  }, [tab, categoriasModalidades]);
+  }, [tab, categoriasModalidades, selectableModalidades, selectedModalidadeId]);
+
+  type ListItem = { idAtleta?: number; idEquipe?: number; genero?: string; nome?: string; graduacao?: string; peso?: number };
 
   const availableList = useMemo(() => {
     const baseList = tab === 'atletas' ? (atletas ?? []) : (equipes ?? []);
-    let list: any[] = baseList as any[];
+    let list: ListItem[] = baseList as unknown as ListItem[];
     if (selectedModalidadeId != null) {
       if (tab === 'atletas') {
         const set = new Set((inscricoesAtletas ?? []).filter(i => i.status === StatusInscricao.INSCRITO).map(i => i.idAtleta));
@@ -184,10 +188,18 @@ const Inscricoes: React.FC = () => {
       }
     }
 
-    if (tab === 'atletas' && selectedModalidadeId != null) {
-      const gen = selectedModalidade?.categoria?.genero as 'Masculino' | 'Feminino' | 'Outro' | undefined;
-      if (gen) {
-        list = list.filter((a: any) => a.genero === gen);
+    if (selectedModalidadeId != null) {
+      const catGenero = selectedModalidade?.categoria?.genero;
+      if (tab === 'atletas') {
+        // Atletas não têm "Misto"; se categoria especifica, filtra pelo genero do atleta
+        if (catGenero && catGenero !== 'Misto') {
+          list = list.filter((a: any) => a.genero === catGenero);
+        }
+      } else {
+        // Equipes: se categoria "Misto" aceita qualquer genero de equipe; se não, filtra matching
+        if (catGenero && catGenero !== 'Misto') {
+          list = list.filter((e: any) => e.genero === catGenero);
+        }
       }
     }
     return list;
@@ -214,14 +226,14 @@ const Inscricoes: React.FC = () => {
       <CardContent>
         <div className="flex flex-wrap items-end gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+            <span className="block text-sm font-medium text-gray-700 mb-2">Tipo</span>
             <div className="flex rounded-md overflow-hidden border">
               <button className={`px-4 py-2 ${tab === 'atletas' ? 'bg-red-600 text-white' : 'bg-white'}`} onClick={() => { setTab('atletas'); setSelectedModalidadeId(null); }}>Atletas</button>
               <button className={`px-4 py-2 ${tab === 'equipes' ? 'bg-red-600 text-white' : 'bg-white'}`} onClick={() => { setTab('equipes'); setSelectedModalidadeId(null); }}>Equipes</button>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+            <span className="block text-sm font-medium text-gray-700 mb-2">Categoria</span>
           <Select value={selectedModalidadeId != null ? String(selectedModalidadeId) : undefined} onValueChange={(v) => setSelectedModalidadeId(Number(v))} onOpenChange={(open) => { if (open) refetchCamp(); }}>
               <SelectTrigger className="w-80">
                 <SelectValue placeholder="Selecione a categoria" />
@@ -229,15 +241,16 @@ const Inscricoes: React.FC = () => {
               <SelectContent>
                 {selectableModalidades.map((m) => (
                   <SelectItem key={m.idCampeonatoModalidade} value={String(m.idCampeonatoModalidade)}>
-                    {m.categoria?.nome} · {m.categoria?.genero} · {modalidadeLabel(m.categoria?.modalidade as Modalidade)}
+                    {m.categoria?.nome} · {m.categoria?.genero} · {modalidadeLabel(m.categoria?.modalidade)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="flex-1 min-w-[220px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Buscar por nome</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="buscarNome">Buscar por nome</label>
             <input
+              id="buscarNome"
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -250,6 +263,19 @@ const Inscricoes: React.FC = () => {
     </Card>
   );
 
+  const getGeneroBadgeClass = (g?: string) => {
+    if (g === 'Masculino') return 'bg-blue-50 text-blue-600';
+    if (g === 'Feminino') return 'bg-pink-50 text-pink-600';
+    if (g === 'Outro') return 'bg-purple-50 text-purple-600';
+    return 'bg-gray-50 text-gray-600';
+  };
+
+  const canInscrever = (isAtletaTab: boolean) => {
+    const mod = selectedModalidade?.categoria?.modalidade;
+    if (isAtletaTab) return isIndividualModalidade(mod);
+    return isEquipeModalidade(mod);
+  };
+
   const renderList = (
     <Card>
       <CardHeader>
@@ -259,10 +285,10 @@ const Inscricoes: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {tab === 'atletas' && selectedModalidade && !isIndividualModalidade(selectedModalidade.categoria?.modalidade as Modalidade) && (
+        {tab === 'atletas' && selectedModalidade && !isIndividualModalidade(selectedModalidade.categoria?.modalidade) && (
           <div className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-3 mb-3">Selecione uma categoria individual para inscrever atletas.</div>
         )}
-        {tab === 'equipes' && selectedModalidade && !isEquipeModalidade(selectedModalidade.categoria?.modalidade as Modalidade) && (
+        {tab === 'equipes' && selectedModalidade && !isEquipeModalidade(selectedModalidade.categoria?.modalidade) && (
           <div className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-3 mb-3">Selecione uma categoria de equipe para inscrever equipes.</div>
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -272,14 +298,14 @@ const Inscricoes: React.FC = () => {
                 <div className="flex-1 max-w-full">
                   <h3 className="font-semibold text-gray-900 whitespace-normal break-words leading-tight max-w-full overflow-visible" title={item.nome}>{item.nome}</h3>
                   {item.genero && (
-                    <Badge className={item.genero === 'Masculino' ? 'bg-blue-50 text-blue-600' : item.genero === 'Feminino' ? 'bg-pink-50 text-pink-600' : 'bg-purple-50 text-purple-600'}>
+                    <Badge className={getGeneroBadgeClass(item.genero)}>
                       {item.genero}
                     </Badge>
                   )}
                 </div>
                 <div className="shrink-0 w-full sm:w-auto">
                 <Button
-                  disabled={selectedModalidadeId == null || (tab === 'atletas' ? !isIndividualModalidade(selectedModalidade?.categoria?.modalidade as Modalidade) : !isEquipeModalidade(selectedModalidade?.categoria?.modalidade as Modalidade))}
+                  disabled={selectedModalidadeId == null || !canInscrever(tab === 'atletas')}
                   onClick={() => {
                     if (selectedModalidadeId == null) return;
                     const modId = Number(selectedModalidadeId);
