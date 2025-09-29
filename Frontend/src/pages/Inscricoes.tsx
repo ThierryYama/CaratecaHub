@@ -191,13 +191,13 @@ const Inscricoes: React.FC = () => {
     if (selectedModalidadeId != null) {
       const catGenero = selectedModalidade?.categoria?.genero;
       if (tab === 'atletas') {
-        // Atletas não têm "Misto"; se categoria especifica, filtra pelo genero do atleta
         if (catGenero && catGenero !== 'Misto') {
           list = list.filter((a: any) => a.genero === catGenero);
         }
       } else {
-        // Equipes: se categoria "Misto" aceita qualquer genero de equipe; se não, filtra matching
-        if (catGenero && catGenero !== 'Misto') {
+        if (catGenero === 'Misto') {
+          list = list.filter((e: any) => e.genero === 'Misto');
+        } else if (catGenero) {
           list = list.filter((e: any) => e.genero === catGenero);
         }
       }
