@@ -15,6 +15,8 @@ import Categorias from "./pages/Categorias";
 import Atletas from "./pages/Atletas";
 import NotFound from "./pages/NotFound";
 import Equipes from "./pages/Equipes";
+import VincularCategorias from "./pages/VincularCategoria";
+import Inscricoes from "./pages/Inscricoes";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +32,8 @@ const App = () => (
           <Route path="/gerenciamento-campeonato" element={<GerenciamentoCampeonato />} />
           <Route path="/chaveamento" element={<Chaveamento />} />
           <Route path="/meu-campeonato/:id" element={<MeuCampeonato />} />
+          <Route path="/meu-campeonato/:id/modalidades" element={<VincularCategorias />} />
+          <Route path="/meu-campeonato/:id/inscricoes" element={<Inscricoes />} />
           <Route path="/chaveamentos-gerencia" element={<ChaveamentosGerencia />} />
           <Route path="/vincular-modalidades" element={<VincularModalidades />} />
           <Route path="/categorias" element={<Categorias />} />
