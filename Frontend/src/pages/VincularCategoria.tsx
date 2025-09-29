@@ -43,7 +43,7 @@ import {
 const VincularCategorias = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeMenuItem, setActiveMenuItem] = useState('modalidades');
-  const [generoFiltro, setGeneroFiltro] = useState<'all' | 'Masculino' | 'Feminino' | 'Outro'>('all');
+  const [generoFiltro, setGeneroFiltro] = useState<'all' | 'Masculino' | 'Feminino' | 'Outro' | 'Misto'>('all');
   const [modalidadeFiltro, setModalidadeFiltro] = useState<'all' | 'KATA' | 'KUMITE' | 'KATA_EQUIPE' | 'KUMITE_EQUIPE'>('all');
   const [nomeFiltro, setNomeFiltro] = useState<string>('');
   const { toast } = useToast();
@@ -79,7 +79,7 @@ const VincularCategorias = () => {
       toast({
         title: 'Erro ao carregar categorias',
         description: err?.message ?? 'Verifique sua conexão e tente novamente.',
-        variant: 'destructive' as any,
+        variant: 'destructive',
       });
     }
   });
@@ -98,7 +98,7 @@ const VincularCategorias = () => {
       toast({
         title: 'Erro ao carregar vinculadas',
         description: err?.message ?? 'Não foi possível carregar as categorias vinculadas.',
-        variant: 'destructive' as any,
+        variant: 'destructive',
       });
     }
   });
@@ -116,7 +116,7 @@ const VincularCategorias = () => {
       toast({
         title: 'Falha ao vincular',
         description: (err as any)?.message || 'Tente novamente mais tarde.',
-        variant: 'destructive' as any,
+        variant: 'destructive',
       });
     }
   });
@@ -134,7 +134,7 @@ const VincularCategorias = () => {
       toast({
         title: 'Falha ao remover',
         description: (err as any)?.message || 'Tente novamente mais tarde.',
-        variant: 'destructive' as any,
+        variant: 'destructive',
       });
     }
   });
@@ -162,9 +162,11 @@ const VincularCategorias = () => {
     const ng = (g ?? 'Outro');
     switch (ng) {
       case 'Masculino':
-        return 'bg-blue-50 text-blue-400';
+        return 'bg-blue-50 text-blue-600';
       case 'Feminino':
-        return 'bg-pink-100 text-pink-800';
+        return 'bg-pink-50 text-pink-600';
+      case 'Misto':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-purple-100 text-purple-800';
     }
@@ -174,6 +176,7 @@ const VincularCategorias = () => {
     const ng = (g ?? 'Outro');
     if (ng === 'Masculino') return 'Masculino';
     if (ng === 'Feminino') return 'Feminino';
+    if (ng === 'Misto') return 'Misto';
     return 'Outro';
   };
 
@@ -238,8 +241,9 @@ const VincularCategorias = () => {
             <CardContent>
               <div className="mb-4 mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Buscar por nome</label>
+                  <label htmlFor="buscarCategoria" className="block text-sm font-medium text-gray-700 mb-2">Buscar por nome</label>
                   <input
+                    id="buscarCategoria"
                     type="text"
                     value={nomeFiltro}
                     onChange={(e) => setNomeFiltro(e.target.value)}
@@ -249,7 +253,7 @@ const VincularCategorias = () => {
                 </div>
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Gênero</label>
+                    <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Gênero</span>
                     <Select value={generoFiltro} onValueChange={(v) => setGeneroFiltro(v as any)}>
                       <SelectTrigger className="w-44">
                         <SelectValue placeholder="Todos os gêneros" />
@@ -258,12 +262,13 @@ const VincularCategorias = () => {
                         <SelectItem value="all">Todos</SelectItem>
                         <SelectItem value="Masculino">Masculino</SelectItem>
                         <SelectItem value="Feminino">Feminino</SelectItem>
+                        <SelectItem value="Misto">Misto</SelectItem>
                         <SelectItem value="Outro">Outro</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Modalidade</label>
+                    <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Modalidade</span>
                     <Select value={modalidadeFiltro} onValueChange={(v) => setModalidadeFiltro(v as any)}>
                       <SelectTrigger className="w-44">
                         <SelectValue placeholder="Todas as modalidades" />
@@ -313,7 +318,7 @@ const VincularCategorias = () => {
                       <div className="text-sm text-gray-600 space-y-1">
                         <p>Idade: {categoria.faixaIdadeMin} - {categoria.faixaIdadeMax} anos</p>
                         <p>Graduação: {categoria.graduacaoMin} - {categoria.graduacaoMax}</p>
-                        {(categoria.pesoMin || categoria.pesoMax) && (
+                        {(categoria.pesoMin != null || categoria.pesoMax != null) && (
                           <p>Peso: {categoria.pesoMin ?? '-'} - {categoria.pesoMax ?? '-'} kg</p>
                         )}
                       </div>
@@ -332,7 +337,7 @@ const VincularCategorias = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {(categoriasVinculadas && categoriasVinculadas.length === 0) ? (
+              {(Array.isArray(categoriasVinculadas) && categoriasVinculadas.length === 0) ? (
                 <div className="text-center py-8">
                   <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                   <p className="text-gray-500">Nenhuma categoria vinculada ainda.</p>
@@ -351,7 +356,7 @@ const VincularCategorias = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(categoriasVinculadas ?? []).map((categoria) => (
+                    {(Array.isArray(categoriasVinculadas) ? categoriasVinculadas : []).map((categoria) => (
                       <TableRow key={categoria.idCategoria}>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -373,7 +378,7 @@ const VincularCategorias = () => {
                         </TableCell>
                         <TableCell>{categoria.faixaIdadeMin} - {categoria.faixaIdadeMax} anos</TableCell>
                         <TableCell>
-                          {(categoria.pesoMin || categoria.pesoMax) ? (
+                          {(categoria.pesoMin != null || categoria.pesoMax != null) ? (
                             <>{categoria.pesoMin ?? '-'} - {categoria.pesoMax ?? '-'} kg</>
                           ) : '-'}
                         </TableCell>
