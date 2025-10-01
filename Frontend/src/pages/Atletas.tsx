@@ -365,59 +365,74 @@ const Atletas = () => {
                   </DialogContent>
                 </Dialog>
               </div>
-              <div className="flex items-center gap-4 pt-4">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4" />
-                  <Input
-                    placeholder="Filtrar por nome, email ou telefone..."
-                    value={filtro}
-                    onChange={(e) => setFiltro(e.target.value)}
-                    className="w-64"
-                  />
+              <div className="flex items-end gap-6 pt-4 flex-wrap">
+                <div>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por texto</span>
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4" />
+                    <Input
+                      placeholder="Nome, email ou telefone..."
+                      value={filtro}
+                      onChange={(e) => setFiltro(e.target.value)}
+                      className="w-64"
+                    />
+                  </div>
                 </div>
-                <Select value={filtroSexo} onValueChange={(v) => setFiltroSexo(v as typeof filtroSexo)}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue placeholder="Gênero" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="Masculino">Masculino</SelectItem>
-                    <SelectItem value="Feminino">Feminino</SelectItem>
-                    <SelectItem value="Outro">Outro</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={filtroAtivo} onValueChange={(v) => setFiltroAtivo(v as typeof filtroAtivo)}>
-                  <SelectTrigger className="w-36">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Qualquer</SelectItem>
-                    <SelectItem value="ativos">Ativos</SelectItem>
-                    <SelectItem value="inativos">Inativos</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={filtroIdade} onValueChange={(v) => setFiltroIdade(v as typeof filtroIdade)}>
-                  <SelectTrigger className="w-36">
-                    <SelectValue placeholder="Faixa etária" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todas idades</SelectItem>
-                    <SelectItem value="infantil">Infantil (&lt;12)</SelectItem>
-                    <SelectItem value="juvenil">Juvenil (12-17)</SelectItem>
-                    <SelectItem value="adulto">Adulto (18+)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={filtroPeso} onValueChange={(v) => setFiltroPeso(v as typeof filtroPeso)}>
-                  <SelectTrigger className="w-36">
-                    <SelectValue placeholder="Peso" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos pesos</SelectItem>
-                    <SelectItem value="leve">Leve (&lt;60kg)</SelectItem>
-                    <SelectItem value="medio">Médio (60-79kg)</SelectItem>
-                    <SelectItem value="pesado">Pesado (80kg+)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Gênero</span>
+                  <Select value={filtroSexo} onValueChange={(v) => setFiltroSexo(v as typeof filtroSexo)}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="Masculino">Masculino</SelectItem>
+                      <SelectItem value="Feminino">Feminino</SelectItem>
+                      <SelectItem value="Outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Status</span>
+                  <Select value={filtroAtivo} onValueChange={(v) => setFiltroAtivo(v as typeof filtroAtivo)}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="ativos">Ativos</SelectItem>
+                      <SelectItem value="inativos">Inativos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Idade</span>
+                  <Select value={filtroIdade} onValueChange={(v) => setFiltroIdade(v as typeof filtroIdade)}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="infantil">Infantil (&lt;12)</SelectItem>
+                      <SelectItem value="juvenil">Juvenil (12-17)</SelectItem>
+                      <SelectItem value="adulto">Adulto (18+)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Peso</span>
+                  <Select value={filtroPeso} onValueChange={(v) => setFiltroPeso(v as typeof filtroPeso)}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="leve">Leve (&lt;60kg)</SelectItem>
+                      <SelectItem value="medio">Médio (60-79kg)</SelectItem>
+                      <SelectItem value="pesado">Pesado (80kg+)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
             <CardContent>

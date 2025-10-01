@@ -341,40 +341,49 @@ const Categorias = () => {
                   </DialogContent>
                 </Dialog>
               </div>
-              <div className="flex items-center gap-4 pt-4">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4" />
-                  <Input
-                    placeholder="Filtrar por nome..."
-                    value={filtro}
-                    onChange={(e) => setFiltro(e.target.value)}
-                    className="w-48"
-                  />
+              <div className="flex items-end gap-6 pt-4 flex-wrap">
+                <div>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por nome</span>
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4" />
+                    <Input
+                      placeholder="Filtrar por nome..."
+                      value={filtro}
+                      onChange={(e) => setFiltro(e.target.value)}
+                      className="w-48"
+                    />
+                  </div>
                 </div>
-                <Select value={filtroSexo} onValueChange={(v) => setFiltroSexo(v as any)}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="Masculino">Masculino</SelectItem>
-                    <SelectItem value="Feminino">Feminino</SelectItem>
-                    <SelectItem value="Outro">Outro</SelectItem>
-                    <SelectItem value="Misto">Misto</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={filtroModalidade} onValueChange={(v) => setFiltroModalidade(v as any)}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Modalidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Completo  </SelectItem>
-                    <SelectItem value={Modalidade.KATA}>Kata</SelectItem>
-                    <SelectItem value={Modalidade.KUMITE}>Kumite</SelectItem>
-                    <SelectItem value={Modalidade.KATA_EQUIPE}>Kata Equipe</SelectItem>
-                    <SelectItem value={Modalidade.KUMITE_EQUIPE}>Kumite Equipe</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Gênero</span>
+                  <Select value={filtroSexo} onValueChange={(v) => setFiltroSexo(v as any)}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="Masculino">Masculino</SelectItem>
+                      <SelectItem value="Feminino">Feminino</SelectItem>
+                      <SelectItem value="Outro">Outro</SelectItem>
+                      <SelectItem value="Misto">Misto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Modalidade</span>
+                  <Select value={filtroModalidade} onValueChange={(v) => setFiltroModalidade(v as any)}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value={Modalidade.KATA}>Kata</SelectItem>
+                      <SelectItem value={Modalidade.KUMITE}>Kumite</SelectItem>
+                      <SelectItem value={Modalidade.KATA_EQUIPE}>Kata Equipe</SelectItem>
+                      <SelectItem value={Modalidade.KUMITE_EQUIPE}>Kumite Equipe</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
             <CardContent>

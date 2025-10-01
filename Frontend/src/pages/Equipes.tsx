@@ -33,6 +33,7 @@ const Equipes: React.FC = () => {
   const [equipeEditando, setEquipeEditando] = useState<Equipe | null>(null);
   const [equipeDetalhes, setEquipeDetalhes] = useState<Equipe | null>(null);
   const [filtro, setFiltro] = useState('');
+  const [filtroGenero, setFiltroGenero] = useState<'todos' | 'Misto' | 'Masculino' | 'Feminino' | 'Outro'>('todos');
   const [atletaParaAdicionar, setAtletaParaAdicionar] = useState<string>('');
   const [atletaSelecionadoCriacao, setAtletaSelecionadoCriacao] = useState<string>('');
 
@@ -182,8 +183,12 @@ const Equipes: React.FC = () => {
 
   const equipesFiltradas = useMemo(() => {
     const f = filtro.toLowerCase();
-    return equipes.filter(e => e.nome.toLowerCase().includes(f));
-  }, [equipes, filtro]);
+    return equipes.filter(e => {
+      const matchNome = e.nome.toLowerCase().includes(f);
+      const matchGenero = filtroGenero === 'todos' || e.genero === filtroGenero;
+      return matchNome && matchGenero;
+    });
+  }, [equipes, filtro, filtroGenero]);
 
   const handleAddAtletaCriacao = () => {
     if (atletaSelecionadoCriacao) {
@@ -375,14 +380,34 @@ const Equipes: React.FC = () => {
                   <Plus className="w-4 h-4 mr-1" /> Nova Equipe
                 </Button>
               </div>
-              <div className="flex items-center gap-2 pt-4">
-                <Filter className="w-4 h-4 text-gray-500" />
-                <Input
-                  placeholder="Filtrar por nome..."
-                  value={filtro}
-                  onChange={e=>setFiltro(e.target.value)}
-                  className="w-64 h-9"
-                />
+              <div className="flex items-end gap-6 pt-4 flex-wrap">
+                <div>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por nome</span>
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-gray-500" />
+                    <Input
+                      placeholder="Filtrar por nome..."
+                      value={filtro}
+                      onChange={e=>setFiltro(e.target.value)}
+                      className="w-64 h-9"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Gênero</span>
+                  <Select value={filtroGenero} onValueChange={(v)=>setFiltroGenero(v as any)}>
+                    <SelectTrigger className="w-40 h-9">
+                      <SelectValue placeholder="Gênero" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="Misto">Misto</SelectItem>
+                      <SelectItem value="Masculino">Masculino</SelectItem>
+                      <SelectItem value="Feminino">Feminino</SelectItem>
+                      <SelectItem value="Outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
