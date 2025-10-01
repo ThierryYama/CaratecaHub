@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useLayoutEffect, useState } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -24,9 +24,7 @@ import {
 } from "@/components/ui/tooltip"
 
 interface SidebarProps {
-  isCollapsed?: boolean;
   onItemClick?: (item: string) => void;
-  onToggle?: () => void;
 }
 
 interface MenuItemBase {
@@ -45,27 +43,22 @@ const baseItems: MenuItemBase[] = [
   { id: 'equipes', label: 'Equipes', icon: Users, path: '/equipes' },
 ];
 
-const Sidebar = ({ isCollapsed: externalCollapsed, onItemClick, onToggle }: SidebarProps) => {
-  const [internalCollapsed, setInternalCollapsed] = useState(false);
-  const isCollapsed = externalCollapsed ?? internalCollapsed;
-  const toggle = () => {
-    if (onToggle) onToggle(); else setInternalCollapsed(c => !c);
-  };
+import { useSidebar } from '@/context/SidebarContext';
+
+const SidebarComponent = ({ onItemClick }: SidebarProps) => {
+  const { isCollapsed, toggle, setCollapsed } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [persistedCampeonatoId, setPersistedCampeonatoId] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('currentCampeonatoId');
-    if (stored) setPersistedCampeonatoId(stored);
-  }, []);
-
-  const regex = /\/meu-campeonato\/(\d+)/;
-  const execMatch = regex.exec(location.pathname);
+  const routeRegex = /\/meu-campeonato\/(\d+)/;
+  const execMatch = routeRegex.exec(location.pathname);
   const routeCampeonatoId = execMatch ? execMatch[1] : undefined;
 
-  useEffect(() => {
+  const [persistedCampeonatoId, setPersistedCampeonatoId] = useState<string | undefined>(() => {
+    return routeCampeonatoId ?? localStorage.getItem('currentCampeonatoId') ?? undefined;
+  });
+
+  useLayoutEffect(() => {
     if (routeCampeonatoId && routeCampeonatoId !== persistedCampeonatoId) {
       localStorage.setItem('currentCampeonatoId', routeCampeonatoId);
       setPersistedCampeonatoId(routeCampeonatoId);
@@ -118,6 +111,7 @@ const Sidebar = ({ isCollapsed: externalCollapsed, onItemClick, onToggle }: Side
     }
     onItemClick?.(item.id);
     if (item.path !== '#') navigate(item.path);
+    if (window.innerWidth < 1024) setCollapsed(true);
   };
 
   const renderItem = (item: MenuItemBase) => {
@@ -177,7 +171,7 @@ const Sidebar = ({ isCollapsed: externalCollapsed, onItemClick, onToggle }: Side
 
   return (
     <aside className={cn(
-      "bg-gray-900 text-white transition-all duration-300 flex flex-col shadow-xl z-50",
+      "bg-gray-900 text-white motion-safe:transition-[width] motion-reduce:transition-none duration-300 flex flex-col shadow-xl z-50",
       "fixed inset-y-0 left-0 lg:relative",
       isCollapsed ? "w-16" : "w-64"
     )}>
@@ -228,5 +222,7 @@ const Sidebar = ({ isCollapsed: externalCollapsed, onItemClick, onToggle }: Side
     </aside>
   );
 };
+
+const Sidebar = React.memo(SidebarComponent);
 
 export default Sidebar;
