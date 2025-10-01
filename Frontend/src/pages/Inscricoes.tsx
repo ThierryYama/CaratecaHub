@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
+import { useSidebar } from '@/context/SidebarContext';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -32,8 +33,7 @@ const isEquipeModalidade = (m?: string) => m === 'KATA_EQUIPE' || m === 'KUMITE_
 const isIndividualModalidade = (m?: string) => m === 'KATA' || m === 'KUMITE';
 
 const Inscricoes: React.FC = () => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  // const [activeMenuItem, setActiveMenuItem] = useState('inscricoes');
+  const { isCollapsed: sidebarCollapsed, toggle: toggleSidebarCtx, setCollapsed: setSidebarCollapsed } = useSidebar();
   const [tab, setTab] = useState<'atletas' | 'equipes'>('atletas');
   const [selectedModalidadeId, setSelectedModalidadeId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
@@ -49,8 +49,8 @@ const Inscricoes: React.FC = () => {
 
   const queryClient = useQueryClient();
 
-  const toggleSidebar = () => setSidebarCollapsed(!sidebarCollapsed);
-  const handleMenuItemClick = (_id: string) => {};
+  const toggleSidebar = () => toggleSidebarCtx();
+  const handleMenuItemClick = (_id: string) => { };
 
   const { data: camp, refetch: refetchCamp } = useQuery<CampeonatoDetalhado>({
     queryKey: ['campeonatoDetalhado', campeonatoId],
@@ -101,7 +101,7 @@ const Inscricoes: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inscricoesAtletasPorModalidade', selectedModalidadeId] });
       toast({ title: 'Atleta inscrito com sucesso' });
     },
-  onError: (e: any) => toast({ title: 'Falha ao inscrever atleta', description: e?.message || 'Tente novamente', variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Falha ao inscrever atleta', description: e?.message || 'Tente novamente', variant: 'destructive' }),
   });
 
   const confirmarInscricaoAtleta = useMutation({
@@ -110,7 +110,7 @@ const Inscricoes: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inscricoesAtletasPorModalidade', selectedModalidadeId] });
       toast({ title: 'Inscrição confirmada' });
     },
-  onError: (e: any) => toast({ title: 'Falha ao confirmar inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Falha ao confirmar inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
   });
 
   const inscreverEquipe = useMutation({
@@ -125,7 +125,7 @@ const Inscricoes: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inscricoesEquipesPorModalidade', selectedModalidadeId] });
       toast({ title: 'Equipe inscrita com sucesso' });
     },
-  onError: (e: any) => toast({ title: 'Falha ao inscrever equipe', description: e?.message || 'Tente novamente', variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Falha ao inscrever equipe', description: e?.message || 'Tente novamente', variant: 'destructive' }),
   });
 
   const confirmarInscricaoEquipe = useMutation({
@@ -134,7 +134,7 @@ const Inscricoes: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inscricoesEquipesPorModalidade', selectedModalidadeId] });
       toast({ title: 'Inscrição confirmada' });
     },
-  onError: (e: any) => toast({ title: 'Falha ao confirmar inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Falha ao confirmar inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
   });
 
   const desvincularInscricaoAtleta = useMutation({
@@ -143,7 +143,7 @@ const Inscricoes: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inscricoesAtletasPorModalidade', selectedModalidadeId] });
       toast({ title: 'Inscrição removida' });
     },
-  onError: (e: any) => toast({ title: 'Falha ao desvincular inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Falha ao desvincular inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
   });
 
   const desvincularInscricaoEquipe = useMutation({
@@ -152,7 +152,7 @@ const Inscricoes: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inscricoesEquipesPorModalidade', selectedModalidadeId] });
       toast({ title: 'Inscrição removida' });
     },
-  onError: (e: any) => toast({ title: 'Falha ao desvincular inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Falha ao desvincular inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
   });
 
   const selectableModalidades = tab === 'atletas' ? modalidadesIndividuais : modalidadesEquipe;
@@ -234,7 +234,7 @@ const Inscricoes: React.FC = () => {
           </div>
           <div>
             <span className="block text-sm font-medium text-gray-700 mb-2">Categoria</span>
-          <Select value={selectedModalidadeId != null ? String(selectedModalidadeId) : undefined} onValueChange={(v) => setSelectedModalidadeId(Number(v))} onOpenChange={(open) => { if (open) refetchCamp(); }}>
+            <Select value={selectedModalidadeId != null ? String(selectedModalidadeId) : undefined} onValueChange={(v) => setSelectedModalidadeId(Number(v))} onOpenChange={(open) => { if (open) refetchCamp(); }}>
               <SelectTrigger className="w-80">
                 <SelectValue placeholder="Selecione a categoria" />
               </SelectTrigger>
@@ -304,39 +304,39 @@ const Inscricoes: React.FC = () => {
                   )}
                 </div>
                 <div className="shrink-0 w-full sm:w-auto">
-                <Button
-                  disabled={selectedModalidadeId == null || !canInscrever(tab === 'atletas')}
-                  onClick={() => {
-                    if (selectedModalidadeId == null) return;
-                    const modId = Number(selectedModalidadeId);
-                    if (tab === 'atletas') {
-                      const existing = (inscricoesAtletas ?? []).find(i => i.idAtleta === item.idAtleta);
-                      if (existing) {
-                        if (existing.status === StatusInscricao.AGUARDANDO) {
-                          confirmarInscricaoAtleta.mutate(existing.idInscricaoAtleta);
+                  <Button
+                    disabled={selectedModalidadeId == null || !canInscrever(tab === 'atletas')}
+                    onClick={() => {
+                      if (selectedModalidadeId == null) return;
+                      const modId = Number(selectedModalidadeId);
+                      if (tab === 'atletas') {
+                        const existing = (inscricoesAtletas ?? []).find(i => i.idAtleta === item.idAtleta);
+                        if (existing) {
+                          if (existing.status === StatusInscricao.AGUARDANDO) {
+                            confirmarInscricaoAtleta.mutate(existing.idInscricaoAtleta);
+                          } else {
+                            toast({ title: 'Atleta já inscrito nesta categoria' });
+                          }
                         } else {
-                          toast({ title: 'Atleta já inscrito nesta categoria' });
+                          inscreverAtleta.mutate({ idAtleta: item.idAtleta, idCampeonatoModalidade: modId });
                         }
                       } else {
-                        inscreverAtleta.mutate({ idAtleta: item.idAtleta, idCampeonatoModalidade: modId });
-                      }
-                    } else {
-                      const existing = (inscricoesEquipes ?? []).find(i => i.idEquipe === item.idEquipe);
-                      if (existing) {
-                        if (existing.status === StatusInscricao.AGUARDANDO) {
-                          confirmarInscricaoEquipe.mutate(existing.idInscricaoEquipe);
+                        const existing = (inscricoesEquipes ?? []).find(i => i.idEquipe === item.idEquipe);
+                        if (existing) {
+                          if (existing.status === StatusInscricao.AGUARDANDO) {
+                            confirmarInscricaoEquipe.mutate(existing.idInscricaoEquipe);
+                          } else {
+                            toast({ title: 'Equipe já inscrita nesta categoria' });
+                          }
                         } else {
-                          toast({ title: 'Equipe já inscrita nesta categoria' });
+                          inscreverEquipe.mutate({ idEquipe: item.idEquipe, idCampeonatoModalidade: modId });
                         }
-                      } else {
-                        inscreverEquipe.mutate({ idEquipe: item.idEquipe, idCampeonatoModalidade: modId });
                       }
-                    }
-                  }}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  Inscrever
-                </Button>
+                    }}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Inscrever
+                  </Button>
                 </div>
               </div>
               {tab === 'atletas' && (

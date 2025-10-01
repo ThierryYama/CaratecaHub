@@ -21,12 +21,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/layout/Sidebar';
+import { useSidebar } from '@/context/SidebarContext';
 import Header from '@/components/layout/Header';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Categoria, fetchCategorias, createCategoria, updateCategoria, deleteCategoria, CategoriaInput, Modalidade } from '@/services/api';
 
 const Categorias = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  const { isCollapsed: isSidebarCollapsed, toggle: toggleSidebar, setCollapsed: setSidebarCollapsed } = useSidebar();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<Categoria | null>(null);
   const [filtro, setFiltro] = useState('');
@@ -102,7 +103,7 @@ const Categorias = () => {
       descricao: '',
       faixaIdadeMin: 0,
       faixaIdadeMax: 0,
-  genero: 'Masculino',
+      genero: 'Masculino',
       modalidade: Modalidade.KUMITE,
       graduacaoMin: '',
       graduacaoMax: '',
@@ -154,7 +155,7 @@ const Categorias = () => {
 
   const categoriasFiltradas = categorias.filter(categoria => {
     const matchNome = categoria.nome.toLowerCase().includes(filtro.toLowerCase());
-  const matchSexo = filtroSexo === 'todos' || categoria.genero === filtroSexo;
+    const matchSexo = filtroSexo === 'todos' || categoria.genero === filtroSexo;
     const matchModalidade = filtroModalidade === 'todos' || categoria.modalidade === filtroModalidade;
     return matchNome && matchSexo && matchModalidade;
   });
@@ -163,23 +164,20 @@ const Categorias = () => {
     <div className="h-screen flex w-full bg-gray-50 overflow-hidden">
       <Sidebar
         isCollapsed={isSidebarCollapsed}
-        onItemClick={() => {
-          if (window.innerWidth < 1024) setIsSidebarCollapsed(true);
-        }}
-        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        onItemClick={() => { if (window.innerWidth < 1024) setSidebarCollapsed(true); }}
+        onToggle={toggleSidebar}
       />
       {!isSidebarCollapsed && (
         <button
           type="button"
           className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           aria-label="Fechar menu lateral"
-          onClick={() => setIsSidebarCollapsed(true)}
+          onClick={() => setSidebarCollapsed(true)}
         />
       )}
 
       <div className="flex-1 flex flex-col">
-        <Header onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
-
+        <Header onToggleSidebar={toggleSidebar} />
         <main className="flex-1 p-6 overflow-y-auto">
           <Card>
             <CardHeader>
@@ -420,11 +418,10 @@ const Categorias = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-sm ${
-                          categoria.modalidade === 'KATA' || categoria.modalidade === 'KATA_EQUIPE'
-                            ? 'bg-blue-100 text-blue-800' 
+                        <span className={`px-2 py-1 rounded-full text-sm ${categoria.modalidade === 'KATA' || categoria.modalidade === 'KATA_EQUIPE'
+                            ? 'bg-blue-100 text-blue-800'
                             : 'bg-orange-100 text-orange-800'
-                        }`}>
+                          }`}>
                           {categoria.modalidade.replace('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
                         </span>
                       </TableCell>

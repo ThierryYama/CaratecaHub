@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Edit, Trash2, Users, Eye, UserPlus, X, Filter } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Sidebar from '@/components/layout/Sidebar';
+import { useSidebar } from '@/context/SidebarContext';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,7 +28,7 @@ import {
 } from '@/services/api';
 
 const Equipes: React.FC = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const { isCollapsed: isSidebarCollapsed, toggle: toggleSidebar, setCollapsed: setSidebarCollapsed } = useSidebar();
   const [isCreateEditDialogOpen, setIsCreateEditDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [equipeEditando, setEquipeEditando] = useState<Equipe | null>(null);
@@ -206,21 +207,20 @@ const Equipes: React.FC = () => {
     <div className="h-screen flex w-full bg-gray-50 overflow-hidden">
       <Sidebar
         isCollapsed={isSidebarCollapsed}
-        onItemClick={() => { if (window.innerWidth < 1024) setIsSidebarCollapsed(true); }}
-        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        onItemClick={() => { if (window.innerWidth < 1024) setSidebarCollapsed(true); }}
+        onToggle={toggleSidebar}
       />
       {!isSidebarCollapsed && (
         <button
           type="button"
           className="fixed inset-0 bg-black/60 z-40 lg:hidden cursor-pointer"
           aria-label="Fechar menu lateral"
-          onClick={() => setIsSidebarCollapsed(true)}
+          onClick={() => setSidebarCollapsed(true)}
         />
       )}
       <div className="flex-1 flex flex-col">
-        <Header onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
-
-        <Dialog open={isCreateEditDialogOpen} onOpenChange={(o)=>{setIsCreateEditDialogOpen(o); if(!o) resetForm();}}>
+        <Header onToggleSidebar={toggleSidebar} />
+        <Dialog open={isCreateEditDialogOpen} onOpenChange={(o) => { setIsCreateEditDialogOpen(o); if (!o) resetForm(); }}>
           <DialogContent className="max-w-xl">
             <DialogHeader>
               <DialogTitle>{equipeEditando ? 'Editar Equipe' : 'Nova Equipe'}</DialogTitle>
@@ -228,15 +228,15 @@ const Equipes: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label htmlFor="nome">Nome</Label>
-                <Input id="nome" value={formData.nome} onChange={e=>setFormData(p=>({...p, nome:e.target.value}))} required />
+                <Input id="nome" value={formData.nome} onChange={e => setFormData(p => ({ ...p, nome: e.target.value }))} required />
               </div>
               <div>
                 <Label htmlFor="desc">Descrição</Label>
-                <Input id="desc" value={formData.descricao} onChange={e=>setFormData(p=>({...p, descricao:e.target.value}))} />
+                <Input id="desc" value={formData.descricao} onChange={e => setFormData(p => ({ ...p, descricao: e.target.value }))} />
               </div>
               <div>
                 <Label>Gênero</Label>
-                <Select value={formData.genero} onValueChange={(v)=>setFormData(p=>({...p, genero: v as any}))}>
+                <Select value={formData.genero} onValueChange={(v) => setFormData(p => ({ ...p, genero: v as any }))}>
                   <SelectTrigger className="w-64">
                     <SelectValue />
                   </SelectTrigger>
@@ -273,20 +273,20 @@ const Equipes: React.FC = () => {
                       return (
                         <div key={id} className="flex items-center justify-between text-sm bg-gray-50 px-2 py-1 rounded">
                           <span className="truncate pr-2">{a.nome}</span>
-                          <Button variant="ghost" size="sm" className="h-6 px-1" onClick={()=>handleRemoveAtletaCriacao(id)}>
+                          <Button variant="ghost" size="sm" className="h-6 px-1" onClick={() => handleRemoveAtletaCriacao(id)}>
                             <X className="w-3 h-3" />
                           </Button>
                         </div>
                       );
                     })}
-                    {formData.atletasIds.length===0 && <div className="text-xs text-gray-500">Nenhum atleta adicionado.</div>}
+                    {formData.atletasIds.length === 0 && <div className="text-xs text-gray-500">Nenhum atleta adicionado.</div>}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">Selecionados: {formData.atletasIds.length}</div>
                 </div>
               )}
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={()=>setIsCreateEditDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || (!equipeEditando && formData.atletasIds.length<2)}>
+                <Button type="button" variant="outline" onClick={() => setIsCreateEditDialogOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || (!equipeEditando && formData.atletasIds.length < 2)}>
                   {(() => {
                     if (equipeEditando) return updateMutation.isPending ? 'Salvando...' : 'Salvar';
                     return createMutation.isPending ? 'Criando...' : 'Criar';
@@ -324,7 +324,7 @@ const Equipes: React.FC = () => {
                   <div className="flex items-end gap-2">
                     <Select value={atletaParaAdicionar} onValueChange={setAtletaParaAdicionar}>
                       <SelectTrigger className="w-64">
-                        <SelectValue placeholder={atletasDisponiveis.length? 'Selecione atleta' : 'Todos já estão na equipe'} />
+                        <SelectValue placeholder={atletasDisponiveis.length ? 'Selecione atleta' : 'Todos já estão na equipe'} />
                       </SelectTrigger>
                       <SelectContent>
                         {atletasDisponiveis.map(a => (
@@ -353,7 +353,7 @@ const Equipes: React.FC = () => {
                             <TableCell className="text-xs py-1">{m.atleta.peso} kg</TableCell>
                             <TableCell className="text-xs py-1">{m.atleta.graduacao}</TableCell>
                             <TableCell className="text-right py-1">
-                              <Button variant="ghost" size="sm" onClick={()=>handleRemoveAtleta(m.atleta.idAtleta)} disabled={removerAtletaMutation.isPending}>
+                              <Button variant="ghost" size="sm" onClick={() => handleRemoveAtleta(m.atleta.idAtleta)} disabled={removerAtletaMutation.isPending}>
                                 <X className="w-4 h-4" />
                               </Button>
                             </TableCell>
@@ -376,7 +376,7 @@ const Equipes: React.FC = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Lista de Equipes</CardTitle>
-                <Button onClick={()=>{resetForm(); setIsCreateEditDialogOpen(true);}} size="sm">
+                <Button onClick={() => { resetForm(); setIsCreateEditDialogOpen(true); }} size="sm">
                   <Plus className="w-4 h-4 mr-1" /> Nova Equipe
                 </Button>
               </div>
@@ -388,14 +388,14 @@ const Equipes: React.FC = () => {
                     <Input
                       placeholder="Filtrar por nome..."
                       value={filtro}
-                      onChange={e=>setFiltro(e.target.value)}
+                      onChange={e => setFiltro(e.target.value)}
                       className="w-64 h-9"
                     />
                   </div>
                 </div>
                 <div>
                   <span className="block text-sm font-medium text-gray-700 mb-2">Filtrar por Gênero</span>
-                  <Select value={filtroGenero} onValueChange={(v)=>setFiltroGenero(v as any)}>
+                  <Select value={filtroGenero} onValueChange={(v) => setFiltroGenero(v as any)}>
                     <SelectTrigger className="w-40 h-9">
                       <SelectValue placeholder="Gênero" />
                     </SelectTrigger>
@@ -432,7 +432,7 @@ const Equipes: React.FC = () => {
                     </TableRow>
                   )}
                   {!isLoadingEquipes && equipesFiltradas.map(e => (
-                    <TableRow key={e.idEquipe} className="hover:bg-muted/40 cursor-pointer" onDoubleClick={()=>handleViewDetails(e)}>
+                    <TableRow key={e.idEquipe} className="hover:bg-muted/40 cursor-pointer" onDoubleClick={() => handleViewDetails(e)}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white">
@@ -452,13 +452,13 @@ const Equipes: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="icon" onClick={()=>handleViewDetails(e)} title="Detalhes">
+                          <Button variant="ghost" size="icon" onClick={() => handleViewDetails(e)} title="Detalhes">
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={()=>handleEdit(e)} title="Editar">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(e)} title="Editar">
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={()=>handleDelete(e.idEquipe)} title="Excluir" disabled={deleteMutation.isPending}>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(e.idEquipe)} title="Excluir" disabled={deleteMutation.isPending}>
                             <Trash2 className="w-4 h-4 text-red-500" />
                           </Button>
                         </div>

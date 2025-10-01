@@ -10,14 +10,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/layout/Sidebar';
+import { useSidebar } from '@/context/SidebarContext';
 import Header from '@/components/layout/Header';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Atleta, AtletaInput, fetchAtletas, createAtleta, updateAtleta, deleteAtleta } from '@/services/api';
 
 const Atletas = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  // no explicit active item state needed here
-  
+  const { isCollapsed: isSidebarCollapsed, toggle: toggleSidebar, setCollapsed: setSidebarCollapsed } = useSidebar();
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [atletaEditando, setAtletaEditando] = useState<Atleta | null>(null);
   const [filtro, setFiltro] = useState('');
@@ -34,7 +34,7 @@ const Atletas = () => {
     email: '',
     telefone: '',
     dataNascimento: '',
-  genero: 'Masculino' as Genero,
+    genero: 'Masculino' as Genero,
     graduacao: '',
     peso: '',
     status: true,
@@ -53,7 +53,7 @@ const Atletas = () => {
 
   const persistAvatars = (next: Record<number, string>) => {
     setAvatars(next);
-    try { localStorage.setItem('atletasAvatares', JSON.stringify(next)); } catch {}
+    try { localStorage.setItem('atletasAvatares', JSON.stringify(next)); } catch { }
   };
 
   const handleAvatarChange = (file?: File) => {
@@ -145,7 +145,7 @@ const Atletas = () => {
     };
 
     if (atletaEditando) {
-  updateMutation.mutate({ id: atletaEditando.idAtleta, atleta: payload });
+      updateMutation.mutate({ id: atletaEditando.idAtleta, atleta: payload });
     } else {
       createMutation.mutate(payload);
     }
@@ -190,7 +190,7 @@ const Atletas = () => {
       const matchSexo = filtroSexo === 'todos' || atleta.genero === filtroSexo;
       const matchAtivo = filtroAtivo === 'todos' || (filtroAtivo === 'ativos' ? atleta.status : !atleta.status);
 
-  const idadeAtual = calcularIdade(atleta.dataNascimento);
+      const idadeAtual = calcularIdade(atleta.dataNascimento);
       const matchIdade =
         filtroIdade === 'todos' ||
         (filtroIdade === 'infantil' && idadeAtual < 12) ||
@@ -199,9 +199,9 @@ const Atletas = () => {
 
       const matchPeso =
         filtroPeso === 'todos' ||
-  (filtroPeso === 'leve' && atleta.peso < 60) ||
-  (filtroPeso === 'medio' && atleta.peso >= 60 && atleta.peso < 80) ||
-  (filtroPeso === 'pesado' && atleta.peso >= 80);
+        (filtroPeso === 'leve' && atleta.peso < 60) ||
+        (filtroPeso === 'medio' && atleta.peso >= 60 && atleta.peso < 80) ||
+        (filtroPeso === 'pesado' && atleta.peso >= 80);
 
       return matchNome && matchSexo && matchAtivo && matchIdade && matchPeso;
     });
@@ -209,20 +209,22 @@ const Atletas = () => {
 
   return (
     <div className="h-screen flex w-full bg-gray-50 overflow-hidden">
-      <Sidebar 
+      <Sidebar
         isCollapsed={isSidebarCollapsed}
-        onItemClick={() => {
-          if (window.innerWidth < 1024) setIsSidebarCollapsed(true);
-        }}
-        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        onItemClick={() => { if (window.innerWidth < 1024) setSidebarCollapsed(true); }}
+        onToggle={toggleSidebar}
       />
       {!isSidebarCollapsed && (
-        <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={() => setIsSidebarCollapsed(true)} />
+        <button
+          type="button"
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+          aria-label="Fechar menu lateral"
+          onClick={() => setSidebarCollapsed(true)}
+        />
       )}
 
       <div className="flex-1 flex flex-col">
-        <Header onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
-
+        <Header onToggleSidebar={toggleSidebar} />
         <main className="flex-1 p-6 overflow-y-auto">
           <Card>
             <CardHeader>
@@ -486,11 +488,10 @@ const Atletas = () => {
                       <TableCell>{atleta.graduacao}</TableCell>
                       <TableCell>{atleta.peso}kg</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          atleta.status 
-                            ? 'bg-green-100 text-green-800' 
+                        <span className={`px-2 py-1 rounded-full text-xs ${atleta.status
+                            ? 'bg-green-100 text-green-800'
                             : 'bg-red-100 text-red-800'
-                        }`}>
+                          }`}>
                           {atleta.status ? 'Ativo' : 'Inativo'}
                         </span>
                       </TableCell>

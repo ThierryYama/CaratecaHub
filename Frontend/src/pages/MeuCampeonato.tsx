@@ -22,12 +22,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchCampeonatoById, updateCampeonato, atualizarEnderecoCampeonato, Status, Campeonato } from '@/services/api';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
+import { useSidebar } from '@/context/SidebarContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 const MeuCampeonato = () => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { isCollapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebar();
   const [editOpen, setEditOpen] = useState(false);
   const navigate = useNavigate();
   const params = useParams<{ id?: string }>();
@@ -40,7 +41,6 @@ const MeuCampeonato = () => {
     return undefined;
   }, [params.id, persistedId]);
 
-  const toggleSidebar = () => setSidebarCollapsed(c => !c);
 
   const { data: campeonato, isLoading, isError, error } = useQuery<Campeonato | undefined>({
     queryKey: ['campeonato', campeonatoId],
@@ -161,7 +161,6 @@ const MeuCampeonato = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar isCollapsed={sidebarCollapsed} />
-
       <div className="flex-1 flex flex-col">
         <Header onToggleSidebar={toggleSidebar} />
         <main className="flex-1 p-6">

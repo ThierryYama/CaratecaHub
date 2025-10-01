@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
+import { useSidebar } from '@/context/SidebarContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,8 +42,7 @@ import {
 } from '@/services/api';
 
 const VincularCategorias = () => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeMenuItem, setActiveMenuItem] = useState('modalidades');
+  const { isCollapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebar();
   const [generoFiltro, setGeneroFiltro] = useState<'all' | 'Masculino' | 'Feminino' | 'Outro' | 'Misto'>('all');
   const [modalidadeFiltro, setModalidadeFiltro] = useState<'all' | 'KATA' | 'KUMITE' | 'KATA_EQUIPE' | 'KUMITE_EQUIPE'>('all');
   const [nomeFiltro, setNomeFiltro] = useState<string>('');
@@ -58,13 +58,8 @@ const VincularCategorias = () => {
 
   const queryClient = useQueryClient();
 
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
 
-  const handleMenuItemClick = (item: string) => {
-    setActiveMenuItem(item);
-  };
+  const handleMenuItemClick = (_item: string) => { };
 
   const {
     data: categorias,
@@ -75,13 +70,6 @@ const VincularCategorias = () => {
   } = useQuery<Categoria[]>({
     queryKey: ['categorias'],
     queryFn: fetchCategorias,
-    onError: (err: any) => {
-      toast({
-        title: 'Erro ao carregar categorias',
-        description: err?.message ?? 'Verifique sua conexão e tente novamente.',
-        variant: 'destructive',
-      });
-    }
   });
 
   const {
@@ -94,13 +82,6 @@ const VincularCategorias = () => {
     queryKey: ['categoriasCampeonato', campeonatoId],
     queryFn: () => (campeonatoId ? listarCategoriasDeCampeonato(campeonatoId) : Promise.resolve(undefined)),
     enabled: !!campeonatoId,
-    onError: (err: any) => {
-      toast({
-        title: 'Erro ao carregar vinculadas',
-        description: err?.message ?? 'Não foi possível carregar as categorias vinculadas.',
-        variant: 'destructive',
-      });
-    }
   });
 
   const addMutation = useMutation<void, Error, number>({
@@ -219,10 +200,9 @@ const VincularCategorias = () => {
         isCollapsed={sidebarCollapsed}
         onItemClick={handleMenuItemClick}
       />
-      
+
       <div className="flex-1 flex flex-col">
         <Header onToggleSidebar={toggleSidebar} />
-        
         <main className="flex-1 p-6">
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Vincular Categorias</h1>
