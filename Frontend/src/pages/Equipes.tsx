@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Edit, Trash2, Users, Eye, UserPlus, X, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Eye, UserPlus, X, Filter, ChevronsUpDown, Check } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Sidebar from '@/components/layout/Sidebar';
 import { useSidebar } from '@/context/SidebarContext';
@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import {
   fetchEquipes,
   fetchAtletas,
@@ -203,6 +205,52 @@ const Equipes: React.FC = () => {
     setFormData(prev => ({ ...prev, atletasIds: prev.atletasIds.filter(i => i !== id) }));
   };
 
+  const AthleteSearchSelect: React.FC<{
+    options: Atleta[];
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+    disabled?: boolean;
+    className?: string;
+  }> = ({ options, value, onChange, placeholder, disabled, className }) => {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState('');
+    const selected = useMemo(() => options.find(o => o.idAtleta.toString() === value), [options, value]);
+    const filtered = useMemo(() => {
+      const q = query.trim().toLowerCase();
+      if (!q) return options;
+      return options.filter(a => a.nome.toLowerCase().includes(q));
+    }, [options, query]);
+    const shown = filtered.slice(0, 50);
+
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="outline" role="combobox" aria-expanded={open} disabled={disabled} className={className || 'w-64 justify-between h-9'}>
+            <span className="truncate max-w-[180px] text-left">{selected ? selected.nome : (placeholder || 'Selecione')}</span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 p-0">
+          <Command shouldFilter={false}>
+            <CommandInput placeholder="Pesquisar atleta..." value={query} onValueChange={setQuery} />
+            <CommandList>
+              <CommandEmpty>Nenhum atleta encontrado</CommandEmpty>
+              <CommandGroup heading={query ? undefined : `Mostrando ${Math.min(shown.length, 50)} de ${options.length}`}>
+                {shown.map(a => (
+                  <CommandItem key={a.idAtleta} value={a.idAtleta.toString()} onSelect={(val) => { onChange(val); setOpen(false); }}>
+                    <Check className={`mr-2 h-4 w-4 ${selected?.idAtleta === a.idAtleta ? 'opacity-100' : 'opacity-0'}`} />
+                    <span className="truncate">{a.nome}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
   return (
     <div className="h-screen flex w-full bg-gray-50 overflow-hidden">
       <Sidebar
@@ -252,16 +300,12 @@ const Equipes: React.FC = () => {
                 <div>
                   <Label>Membros (mín. 2)</Label>
                   <div className="flex items-end gap-2 mt-2">
-                    <Select value={atletaSelecionadoCriacao} onValueChange={setAtletaSelecionadoCriacao}>
-                      <SelectTrigger className="w-64">
-                        <SelectValue placeholder={atletasDisponiveisCriacao.length ? 'Selecione atleta' : 'Todos selecionados'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {atletasDisponiveisCriacao.map(a => (
-                          <SelectItem key={a.idAtleta} value={a.idAtleta.toString()}>{a.nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <AthleteSearchSelect
+                      options={atletasDisponiveisCriacao}
+                      value={atletaSelecionadoCriacao}
+                      onChange={setAtletaSelecionadoCriacao}
+                      placeholder={atletasDisponiveisCriacao.length ? 'Selecione atleta' : 'Todos selecionados'}
+                    />
                     <Button type="button" size="sm" onClick={handleAddAtletaCriacao} disabled={!atletaSelecionadoCriacao}>
                       <UserPlus className="w-4 h-4 mr-1" /> Adicionar
                     </Button>
@@ -322,16 +366,12 @@ const Equipes: React.FC = () => {
                 <div className="space-y-2">
                   <p className="font-semibold flex items-center gap-2"><Users className="w-4 h-4" /> Membros</p>
                   <div className="flex items-end gap-2">
-                    <Select value={atletaParaAdicionar} onValueChange={setAtletaParaAdicionar}>
-                      <SelectTrigger className="w-64">
-                        <SelectValue placeholder={atletasDisponiveis.length ? 'Selecione atleta' : 'Todos já estão na equipe'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {atletasDisponiveis.map(a => (
-                          <SelectItem key={a.idAtleta} value={a.idAtleta.toString()}>{a.nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <AthleteSearchSelect
+                      options={atletasDisponiveis}
+                      value={atletaParaAdicionar}
+                      onChange={setAtletaParaAdicionar}
+                      placeholder={atletasDisponiveis.length ? 'Selecione atleta' : 'Todos já estão na equipe'}
+                    />
                     <Button type="button" size="sm" onClick={handleAddAtleta} disabled={!atletaParaAdicionar || vincularAtletaMutation.isPending}>
                       <UserPlus className="w-4 h-4 mr-1" /> {vincularAtletaMutation.isPending ? 'Adicionando...' : 'Adicionar'}
                     </Button>
