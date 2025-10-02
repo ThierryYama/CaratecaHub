@@ -5,7 +5,6 @@ import { useSidebar } from '@/context/SidebarContext';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +25,9 @@ import {
   CampeonatoDetalhado,
   StatusInscricao,
 } from '@/services/api';
-import { AlertCircle, CheckCircle2, Users, UserRound } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Users, UserRound, ChevronsUpDown, Check } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 const modalidadeLabel = (m?: Modalidade) => (m ?? '').toString().replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 const isEquipeModalidade = (m?: string) => m === 'KATA_EQUIPE' || m === 'KUMITE_EQUIPE';
@@ -234,18 +235,13 @@ const Inscricoes: React.FC = () => {
           </div>
           <div>
             <span className="block text-sm font-medium text-gray-700 mb-2">Categoria</span>
-            <Select value={selectedModalidadeId != null ? String(selectedModalidadeId) : undefined} onValueChange={(v) => setSelectedModalidadeId(Number(v))} onOpenChange={(open) => { if (open) refetchCamp(); }}>
-              <SelectTrigger className="w-80">
-                <SelectValue placeholder="Selecione a categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                {selectableModalidades.map((m) => (
-                  <SelectItem key={m.idCampeonatoModalidade} value={String(m.idCampeonatoModalidade)}>
-                    {m.categoria?.nome} · {m.categoria?.genero} · {modalidadeLabel(m.categoria?.modalidade)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CategorySearchSelect
+              options={selectableModalidades}
+              value={selectedModalidadeId}
+              onChange={(id) => setSelectedModalidadeId(id)}
+              placeholder="Selecione a categoria"
+              onOpen={() => refetchCamp()}
+            />
           </div>
           <div className="flex-1 min-w-[220px]">
             <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="buscarNome">Buscar por nome</label>
@@ -408,7 +404,7 @@ const Inscricoes: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar isCollapsed={sidebarCollapsed} onItemClick={handleMenuItemClick} />
+  <Sidebar onItemClick={handleMenuItemClick} />
       <div className="flex-1 flex flex-col">
         <Header onToggleSidebar={toggleSidebar} />
         <main className="flex-1 p-6">
@@ -430,3 +426,67 @@ const Inscricoes: React.FC = () => {
 };
 
 export default Inscricoes;
+
+function CategorySearchSelect({
+  options,
+  value,
+  onChange,
+  placeholder,
+  onOpen,
+}: {
+  options: Array<any>;
+  value: number | null;
+  onChange: (id: number) => void;
+  placeholder?: string;
+  onOpen?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+
+  const selected = useMemo(() => options.find(o => o.idCampeonatoModalidade === value), [options, value]);
+  const labelFor = (o: any) => `${o?.categoria?.nome || ''} · ${o?.categoria?.genero || ''} · ${modalidadeLabel(o?.categoria?.modalidade)}`;
+  const selectedLabel = selected ? labelFor(selected) : '';
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o: any) => {
+      const nome = (o?.categoria?.nome || '').toLowerCase();
+      const genero = (o?.categoria?.genero || '').toLowerCase();
+      const mod = modalidadeLabel(o?.categoria?.modalidade).toLowerCase();
+      return nome.includes(q) || genero.includes(q) || mod.includes(q);
+    });
+  }, [options, query]);
+
+  const shown = filtered.slice(0, 100);
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(v) => { setOpen(v); if (v) onOpen?.(); }}
+    >
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" role="combobox" aria-expanded={open} className="w-80 h-9 justify-between">
+          <span className="truncate max-w-[220px] text-left">{selectedLabel || placeholder || 'Selecione'}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-96 p-0">
+        <Command shouldFilter={false}>
+          <CommandInput placeholder="Pesquisar categoria..." value={query} onValueChange={setQuery} />
+          <CommandList>
+            <CommandEmpty>Nenhuma categoria encontrada</CommandEmpty>
+            <CommandGroup heading={query ? undefined : `Mostrando ${Math.min(shown.length, 100)} de ${options.length}`}>
+              {shown.map((o: any) => (
+                <CommandItem key={o.idCampeonatoModalidade} value={String(o.idCampeonatoModalidade)} onSelect={() => { onChange(o.idCampeonatoModalidade); setOpen(false); }}>
+                  <Check className={`mr-2 h-4 w-4 ${o.idCampeonatoModalidade === value ? 'opacity-100' : 'opacity-0'}`} />
+                  <span className="truncate">{labelFor(o)}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
