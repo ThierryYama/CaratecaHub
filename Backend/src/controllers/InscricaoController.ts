@@ -76,6 +76,14 @@ export const cadastrarInscricaoAtleta = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'idAtleta e idCampeonatoModalidade são obrigatórios' });
     }
 
+    const cm = await prisma.campeonatoModalidade.findUnique({ where: { idCampeonatoModalidade: Number(idCampeonatoModalidade) } });
+    if (!cm) return res.status(404).json({ message: 'CampeonatoModalidade não encontrado' });
+    const camp = await prisma.campeonato.findUnique({ where: { idCampeonato: cm.idCampeonato } });
+    if (!camp) return res.status(404).json({ message: 'Campeonato não encontrado' });
+    if (camp.inscricoesConfirmadas) {
+      return res.status(409).json({ message: 'Inscrições já confirmadas. Alterações bloqueadas.' });
+    }
+
     const existente = await prisma.inscricaoAtleta.findFirst({ where: { idAtleta, idCampeonatoModalidade } });
     if (existente) {
       return res.status(409).json({ message: 'Inscrição de atleta já existente para esta modalidade do campeonato', data: existente });
@@ -100,6 +108,14 @@ export const atualizarInscricaoAtleta = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
     const data = req.body;
+    
+    const existente = await prisma.inscricaoAtleta.findUnique({ where: { idInscricaoAtleta: id }, include: { campeonatoModalidade: true } });
+    if (!existente) return res.status(404).json({ message: 'Inscrição de atleta não encontrada' });
+    const camp = await prisma.campeonato.findUnique({ where: { idCampeonato: existente.campeonatoModalidade.idCampeonato } });
+    if (!camp) return res.status(404).json({ message: 'Campeonato não encontrado' });
+    if (camp.inscricoesConfirmadas) {
+      return res.status(409).json({ message: 'Inscrições já confirmadas. Alterações bloqueadas.' });
+    }
     const updated = await prisma.inscricaoAtleta.update({ where: { idInscricaoAtleta: id }, data });
     res.status(200).json(updated);
   } catch (err) {
@@ -183,6 +199,14 @@ export const cadastrarInscricaoEquipe = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'idEquipe e idCampeonatoModalidade são obrigatórios' });
     }
 
+    const cm = await prisma.campeonatoModalidade.findUnique({ where: { idCampeonatoModalidade: Number(idCampeonatoModalidade) } });
+    if (!cm) return res.status(404).json({ message: 'CampeonatoModalidade não encontrado' });
+    const camp = await prisma.campeonato.findUnique({ where: { idCampeonato: cm.idCampeonato } });
+    if (!camp) return res.status(404).json({ message: 'Campeonato não encontrado' });
+    if (camp.inscricoesConfirmadas) {
+      return res.status(409).json({ message: 'Inscrições já confirmadas. Alterações bloqueadas.' });
+    }
+
     const existente = await prisma.inscricaoEquipe.findFirst({ where: { idEquipe, idCampeonatoModalidade } });
     if (existente) {
       return res.status(409).json({ message: 'Inscrição de equipe já existente para esta modalidade do campeonato', data: existente });
@@ -207,6 +231,13 @@ export const atualizarInscricaoEquipe = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
     const data = req.body;
+    const existente = await prisma.inscricaoEquipe.findUnique({ where: { idInscricaoEquipe: id }, include: { campeonatoModalidade: true } });
+    if (!existente) return res.status(404).json({ message: 'Inscrição de equipe não encontrada' });
+    const camp = await prisma.campeonato.findUnique({ where: { idCampeonato: existente.campeonatoModalidade.idCampeonato } });
+    if (!camp) return res.status(404).json({ message: 'Campeonato não encontrado' });
+    if (camp.inscricoesConfirmadas) {
+      return res.status(409).json({ message: 'Inscrições já confirmadas. Alterações bloqueadas.' });
+    }
     const updated = await prisma.inscricaoEquipe.update({ where: { idInscricaoEquipe: id }, data });
     res.status(200).json(updated);
   } catch (err) {
