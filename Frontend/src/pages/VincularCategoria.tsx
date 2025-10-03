@@ -6,8 +6,7 @@ import {
   Trash2,
   Save,
   CheckCircle,
-  AlertCircle,
-  Filter
+  AlertCircle
 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
@@ -30,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -38,11 +37,13 @@ import {
   listarCategoriasDeCampeonato,
   adicionarCategoriaAoCampeonato,
   removerCategoriaDeCampeonato,
-  Categoria
+  Categoria,
+  fetchEtapas,
+  confirmarCategorias as confirmarCategoriasApi,
 } from '@/services/api';
 
 const VincularCategorias = () => {
-  const { isCollapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebar();
+  const { toggle: toggleSidebar } = useSidebar();
   const [generoFiltro, setGeneroFiltro] = useState<'all' | 'Masculino' | 'Feminino' | 'Outro' | 'Misto'>('all');
   const [modalidadeFiltro, setModalidadeFiltro] = useState<'all' | 'KATA' | 'KUMITE' | 'KATA_EQUIPE' | 'KUMITE_EQUIPE'>('all');
   const [nomeFiltro, setNomeFiltro] = useState<string>('');
@@ -57,6 +58,7 @@ const VincularCategorias = () => {
   }, [params.id, persistedId]);
 
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
 
   const handleMenuItemClick = (_item: string) => { };
@@ -81,6 +83,12 @@ const VincularCategorias = () => {
   } = useQuery<Categoria[] | undefined>({
     queryKey: ['categoriasCampeonato', campeonatoId],
     queryFn: () => (campeonatoId ? listarCategoriasDeCampeonato(campeonatoId) : Promise.resolve(undefined)),
+    enabled: !!campeonatoId,
+  });
+
+  const { data: etapasStatus, refetch: refetchEtapas } = useQuery({
+    queryKey: ['etapas', campeonatoId],
+    queryFn: () => (campeonatoId ? fetchEtapas(campeonatoId) : Promise.resolve(undefined)),
     enabled: !!campeonatoId,
   });
 
@@ -117,6 +125,22 @@ const VincularCategorias = () => {
         description: (err as any)?.message || 'Tente novamente mais tarde.',
         variant: 'destructive',
       });
+    }
+  });
+
+  const confirmarCategoriasMutation = useMutation({
+    mutationFn: async () => {
+      if (!campeonatoId) throw new Error('Campeonato inválido');
+      return confirmarCategoriasApi(campeonatoId);
+    },
+    onSuccess: () => {
+      toast({ title: 'Categorias confirmadas', description: 'As categorias foram confirmadas e alterações foram bloqueadas.' });
+      refetchVinculadas();
+      refetchEtapas();
+      navigate(`/meu-campeonato/${campeonatoId}`);
+    },
+    onError: (err: any) => {
+      toast({ title: 'Falha ao confirmar', description: err?.response?.data?.message || err?.message || 'Tente novamente', variant: 'destructive' });
     }
   });
 
@@ -196,10 +220,7 @@ const VincularCategorias = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar
-        isCollapsed={sidebarCollapsed}
-        onItemClick={handleMenuItemClick}
-      />
+      <Sidebar onItemClick={handleMenuItemClick} />
 
       <div className="flex-1 flex flex-col">
         <Header onToggleSidebar={toggleSidebar} />
@@ -372,7 +393,7 @@ const VincularCategorias = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={removeMutation.isPending}
+                            disabled={removeMutation.isPending || etapasStatus?.categoriasConfirmadas}
                             onClick={() => removeMutation.mutate(categoria.idCategoria)}
                             className="text-red-600 hover:text-red-700"
                           >
@@ -387,16 +408,25 @@ const VincularCategorias = () => {
             </CardContent>
           </Card>
 
-          <div className="flex justify-center">
+          <div className="flex justify-center gap-3">
             <Button
               className="bg-green-600 hover:bg-green-700 px-8"
               onClick={() => {
                 refetchCategorias();
                 refetchVinculadas();
+                refetchEtapas();
               }}
             >
               <Save className="w-4 h-4 mr-2" />
               Atualizar Listas
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 px-8"
+              disabled={!Array.isArray(categoriasVinculadas) || categoriasVinculadas.length === 0 || etapasStatus?.categoriasConfirmadas}
+              onClick={() => confirmarCategoriasMutation.mutate()}
+              title={etapasStatus?.categoriasConfirmadas ? 'Categorias já confirmadas' : ''}
+            >
+              Confirmar Categorias
             </Button>
           </div>
         </main>
