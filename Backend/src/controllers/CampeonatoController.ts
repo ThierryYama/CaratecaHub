@@ -1,9 +1,9 @@
-import {Request, Response} from 'express';
+import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
 
 export const listarCampeonatos = async (req: Request, res: Response) => {
     try {
-        const campeonatos = await prisma.campeonato.findMany({orderBy: {idCampeonato: 'asc'}});
+        const campeonatos = await prisma.campeonato.findMany({ orderBy: { idCampeonato: 'asc' } });
         res.status(200).json(campeonatos);
     } catch (err) {
         res.status(500).json({ message: 'Erro ao listar campeonatos', error: String(err) });
@@ -58,15 +58,15 @@ export const cadastrarCampeonato = async (req: Request, res: Response) => {
         if (!endereco && !idEndereco) {
             return res.status(400).json({ message: 'Você deve fornecer um objeto "endereco" para criar um novo ou um "idEndereco" para vincular a um existente.' });
         }
-        
+
         if (endereco && idEndereco) {
-             return res.status(400).json({ message: 'Forneça apenas "endereco" ou "idEndereco", não ambos.' });
+            return res.status(400).json({ message: 'Forneça apenas "endereco" ou "idEndereco", não ambos.' });
         }
 
         const dataCreate: any = {
             ...campeonatoData,
-            dataInicio: new Date(dataInicio), 
-            associacao: { 
+            dataInicio: new Date(dataInicio),
+            associacao: {
                 connect: {
                     idAssociacao: Number(idAssociacao)
                 }
@@ -85,15 +85,15 @@ export const cadastrarCampeonato = async (req: Request, res: Response) => {
 
         const campeonato = await prisma.campeonato.create({
             data: dataCreate,
-            include: { 
-                endereco: true 
+            include: {
+                endereco: true
             }
         });
 
         res.status(201).json(campeonato);
 
     } catch (err: any) {
-        if (err.code === 'P2025') { 
+        if (err.code === 'P2025') {
             return res.status(404).json({ message: `Associação ou Endereço com o ID informado não foi encontrado.`, error: String(err) });
         }
         res.status(400).json({ message: 'Erro ao criar campeonato', error: String(err) });
@@ -136,6 +136,9 @@ export const adicionarCategoriaAoCampeonato = async (req: Request, res: Response
         ]);
 
         if (!campeonato) return res.status(404).json({ message: 'Campeonato não encontrado' });
+        if (campeonato.categoriasConfirmadas) {
+            return res.status(409).json({ message: 'Categorias já confirmadas. Alterações bloqueadas.' });
+        }
         if (!categoria) return res.status(404).json({ message: 'Categoria não encontrada' });
 
         const existente = await prisma.campeonatoModalidade.findFirst({
@@ -161,6 +164,12 @@ export const removerCategoriaDeCampeonato = async (req: Request, res: Response) 
 
         if (isNaN(idCampeonato) || isNaN(idCategoria)) {
             return res.status(400).json({ message: 'Parâmetros inválidos' });
+        }
+
+        const campeonato = await prisma.campeonato.findUnique({ where: { idCampeonato } });
+        if (!campeonato) return res.status(404).json({ message: 'Campeonato não encontrado' });
+        if (campeonato.categoriasConfirmadas) {
+            return res.status(409).json({ message: 'Categorias já confirmadas. Alterações bloqueadas.' });
         }
 
         const existente = await prisma.campeonatoModalidade.findFirst({
@@ -224,6 +233,66 @@ export const atualizarEnderecoCampeonato = async (req: Request, res: Response) =
         return res.status(200).json({ message: 'Endereço atualizado', endereco: enderecoAtualizado });
     } catch (err) {
         res.status(400).json({ message: 'Erro ao atualizar endereço do campeonato', error: String(err) });
+    }
+};
+
+export const confirmarCategorias = async (req: Request, res: Response) => {
+    try {
+        const idCampeonato = Number(req.params.idCampeonato);
+        const camp = await prisma.campeonato.findUnique({ where: { idCampeonato }, include: { modalidades: true } });
+        if (!camp) return res.status(404).json({ message: 'Campeonato não encontrado' });
+        if (camp.categoriasConfirmadas) return res.status(409).json({ message: 'Etapa já confirmada' });
+        if ((camp.modalidades?.length ?? 0) === 0) {
+            return res.status(400).json({ message: 'Vincule ao menos uma categoria antes de confirmar' });
+        }
+        const updated = await prisma.campeonato.update({ where: { idCampeonato }, data: { categoriasConfirmadas: true } });
+        return res.status(200).json(updated);
+    } catch (err) {
+        res.status(400).json({ message: 'Erro ao confirmar categorias', error: String(err) });
+    }
+};
+
+export const confirmarInscricoes = async (req: Request, res: Response) => {
+    try {
+        const idCampeonato = Number(req.params.idCampeonato);
+        const camp = await prisma.campeonato.findUnique({ where: { idCampeonato } });
+        if (!camp) return res.status(404).json({ message: 'Campeonato não encontrado' });
+        if (!camp.categoriasConfirmadas) return res.status(400).json({ message: 'Confirme categorias antes de confirmar inscrições' });
+        if (camp.inscricoesConfirmadas) return res.status(409).json({ message: 'Etapa já confirmada' });
+
+        const [countAtletas, countEquipes] = await Promise.all([
+            prisma.inscricaoAtleta.count({ where: { campeonatoModalidade: { idCampeonato } } }),
+            prisma.inscricaoEquipe.count({ where: { campeonatoModalidade: { idCampeonato } } }),
+        ]);
+        if (countAtletas + countEquipes === 0) return res.status(400).json({ message: 'É necessário ter ao menos uma inscrição para confirmar' });
+
+        const updated = await prisma.campeonato.update({ where: { idCampeonato }, data: { inscricoesConfirmadas: true } });
+        return res.status(200).json(updated);
+    } catch (err) {
+        res.status(400).json({ message: 'Erro ao confirmar inscrições', error: String(err) });
+    }
+};
+
+export const VerificarEtapasDoCampeonato = async (req: Request, res: Response) => {
+    try {
+        const idCampeonato = Number(req.params.idCampeonato);
+        const camp = await prisma.campeonato.findUnique({ where: { idCampeonato } });
+        if (!camp) return res.status(404).json({ message: 'Campeonato não encontrado' });
+        const modalidades = await prisma.campeonatoModalidade.count({ where: { idCampeonato } });
+        const countAtletas = await prisma.inscricaoAtleta.count({ where: { campeonatoModalidade: { idCampeonato } } });
+        const countEquipes = await prisma.inscricaoEquipe.count({ where: { campeonatoModalidade: { idCampeonato } } });
+
+        return res.status(200).json({
+            idCampeonato,
+            modalidades,
+            inscricoesAtleta: countAtletas,
+            inscricoesEquipe: countEquipes,
+            categoriasConfirmadas: camp.categoriasConfirmadas ?? false,
+            inscricoesConfirmadas: camp.inscricoesConfirmadas ?? false,
+            chaveamentoGerado: camp.chaveamentoGerado ?? false,
+        });
+    } catch (err) {
+        res.status(400).json({ message: 'Erro ao obter etapas do campeonato', error: String(err) });
     }
 };
 
