@@ -105,6 +105,9 @@ model Campeonato {
   descricao String? @db.VarChar(256)
   status Status @default(PENDENTE)
   modalidades CampeonatoModalidade[]
+  categoriasConfirmadas Boolean @default(false)
+  inscricoesConfirmadas Boolean @default(false)
+  chaveamentoGerado Boolean @default(false)
 }
 
 model CampeonatoModalidade{
