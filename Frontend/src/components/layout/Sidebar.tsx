@@ -22,6 +22,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useQuery } from '@tanstack/react-query';
+import { fetchEtapas } from '@/services/api';
 
 interface SidebarProps {
   onItemClick?: (item: string) => void;
@@ -69,6 +71,14 @@ const SidebarComponent = ({ onItemClick }: SidebarProps) => {
     localStorage.removeItem('currentCampeonatoId');
     setPersistedCampeonatoId(undefined);
   };
+
+  const effectiveCampeonatoId = routeCampeonatoId || persistedCampeonatoId;
+  const { data: etapasStatus } = useQuery({
+    queryKey: ['etapas', effectiveCampeonatoId],
+    queryFn: () => (effectiveCampeonatoId ? fetchEtapas(Number(effectiveCampeonatoId)) : Promise.resolve(undefined)),
+    enabled: !!effectiveCampeonatoId,
+    staleTime: 0,
+  });
 
   const contextualItems = useMemo(() => {
     const effectiveId = routeCampeonatoId || persistedCampeonatoId;
@@ -142,21 +152,25 @@ const SidebarComponent = ({ onItemClick }: SidebarProps) => {
               const ChildIcon = child.icon;
               const childActive = location.pathname === child.path;
               let childStyle: string;
+              const disabledChild = (child.id === 'inscricoes' && !!etapasStatus?.inscricoesConfirmadas)
+                || (child.id === 'modalidades' && !!etapasStatus?.categoriasConfirmadas);
               if (child.id === 'sair-contexto') {
                 childStyle = 'text-gray-500 hover:bg-gray-800 hover:text-white';
               } else if (childActive) {
                 childStyle = 'bg-gray-800 text-white';
               } else {
-                childStyle = 'text-gray-400 hover:bg-gray-800 hover:text-white';
+                childStyle = cn('text-gray-400 hover:bg-gray-800 hover:text-white', disabledChild && 'opacity-60 cursor-not-allowed pointer-events-none');
+              }
+              let childTitle: string | undefined = undefined;
+              if (disabledChild) {
+                childTitle = child.id === 'inscricoes' ? 'Inscrições já confirmadas' : 'Categorias já confirmadas';
               }
               return (
                 <button
                   key={child.id}
                   onClick={() => handleItemClick(child)}
-                  className={cn(
-                    'w-full flex items-center gap-2 px-2 py-2 rounded-md text-left text-sm transition-colors',
-                    childStyle
-                  )}
+                  className={cn('w-full flex items-center gap-2 px-2 py-2 rounded-md text-left text-sm transition-colors', childStyle)}
+                  title={childTitle}
                 >
                   <ChildIcon className="w-4 h-4 flex-shrink-0" />
                   <span className="truncate">{child.label}</span>
