@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import { useSidebar } from '@/context/SidebarContext';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,6 +24,8 @@ import {
   InscricaoEquipe,
   CampeonatoDetalhado,
   StatusInscricao,
+  fetchEtapas,
+  confirmarInscricoes,
 } from '@/services/api';
 import { AlertCircle, CheckCircle2, Users, UserRound, ChevronsUpDown, Check } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -39,6 +41,7 @@ const Inscricoes: React.FC = () => {
   const [selectedModalidadeId, setSelectedModalidadeId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const params = useParams<{ id?: string }>();
   const persistedId = typeof window !== 'undefined' ? localStorage.getItem('currentCampeonatoId') : undefined;
@@ -62,6 +65,13 @@ const Inscricoes: React.FC = () => {
     enabled: !!campeonatoId,
     staleTime: 0,
     refetchOnWindowFocus: true,
+  });
+
+  const { data: etapasStatus, refetch: refetchEtapas } = useQuery({
+    queryKey: ['etapas', campeonatoId],
+    queryFn: () => (campeonatoId ? fetchEtapas(campeonatoId) : Promise.resolve(undefined)),
+    enabled: !!campeonatoId,
+    staleTime: 0,
   });
 
   const categoriasModalidades = camp?.modalidades ?? [];
@@ -154,6 +164,22 @@ const Inscricoes: React.FC = () => {
       toast({ title: 'Inscrição removida' });
     },
     onError: (e: any) => toast({ title: 'Falha ao desvincular inscrição', description: e?.message || 'Tente novamente', variant: 'destructive' }),
+  });
+
+  const confirmarInscricoesMutation = useMutation({
+    mutationFn: async () => {
+      if (!campeonatoId) throw new Error('Campeonato não definido');
+      return confirmarInscricoes(campeonatoId);
+    },
+    onSuccess: () => {
+      toast({ title: 'Inscrições confirmadas' });
+      refetchEtapas();
+      navigate(`/meu-campeonato/${campeonatoId}`);
+    },
+    onError: (e: any) => {
+      const msg = e?.response?.data?.message || e?.message || 'Tente novamente';
+      toast({ title: 'Falha ao confirmar inscrições', description: msg, variant: 'destructive' });
+    }
   });
 
   const selectableModalidades = tab === 'atletas' ? modalidadesIndividuais : modalidadesEquipe;
@@ -418,6 +444,25 @@ const Inscricoes: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {renderList}
             {renderInscritos}
+          </div>
+          <div className="flex justify-center gap-3 mt-6">
+            <Button
+              className="bg-green-600 hover:bg-green-700 px-8"
+              onClick={() => {
+                refetchCamp();
+                refetchEtapas();
+              }}
+            >
+              Atualizar Listas
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 px-8"
+              disabled={!!etapasStatus?.inscricoesConfirmadas || confirmarInscricoesMutation.isPending}
+              title={etapasStatus?.inscricoesConfirmadas ? 'Inscrições já confirmadas' : ''}
+              onClick={() => confirmarInscricoesMutation.mutate()}
+            >
+              {confirmarInscricoesMutation.isPending ? 'Confirmando...' : 'Confirmar Inscrições'}
+            </Button>
           </div>
         </main>
       </div>
