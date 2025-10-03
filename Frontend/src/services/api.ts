@@ -295,6 +295,32 @@ export interface CampeonatoModalidade {
   campeonato?: Campeonato;
 }
 
+
+export interface EtapasStatus {
+  idCampeonato: number;
+  modalidades: number;
+  inscricoesAtleta: number;
+  inscricoesEquipe: number;
+  categoriasConfirmadas: boolean;
+  inscricoesConfirmadas: boolean;
+  chaveamentoGerado: boolean;
+}
+
+export const fetchEtapas = async (idCampeonato: number): Promise<EtapasStatus> => {
+  const response = await api.get(`/etapas/${idCampeonato}`);
+  return response.data;
+};
+
+export const confirmarCategorias = async (idCampeonato: number) => {
+  const response = await api.post(`/confirmarCategorias/${idCampeonato}`);
+  return response.data;
+};
+
+export const confirmarInscricoes = async (idCampeonato: number) => {
+  const response = await api.post(`/confirmarInscricoes/${idCampeonato}`);
+  return response.data;
+};
+
 export interface InscricaoAtleta {
   idInscricaoAtleta: number;
   idAtleta: number;
