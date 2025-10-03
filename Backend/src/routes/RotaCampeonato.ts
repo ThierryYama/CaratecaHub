@@ -14,5 +14,8 @@ router.post('/adicionarCategoriaAoCampeonato/:idCampeonato', CampeonatoControlle
 router.delete('/removerCategoriaDeCampeonato/:idCampeonato/:idCategoria', CampeonatoController.removerCategoriaDeCampeonato);
 router.get('/listarCategoriasDeCampeonato/:idCampeonato', CampeonatoController.listarCategoriasDeCampeonato);
 router.put('/atualizarEnderecoCampeonato/:idCampeonato', CampeonatoController.atualizarEnderecoCampeonato);
+router.post('/confirmarCategorias/:idCampeonato', CampeonatoController.confirmarCategorias);
+router.post('/confirmarInscricoes/:idCampeonato', CampeonatoController.confirmarInscricoes);
+router.get('/etapas/:idCampeonato', CampeonatoController.VerificarEtapasDoCampeonato);
 
 export default router;
