@@ -6,20 +6,18 @@ import {
   MapPin,
   Pencil,
   UserPlus,
-  List,
   Medal,
   FileText,
   CheckCircle,
   Play,
   Square,
-  GitBranch,
   Link,
   Target,
   Award
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchCampeonatoById, updateCampeonato, atualizarEnderecoCampeonato, Status, Campeonato } from '@/services/api';
+import { fetchCampeonatoById, fetchCampeonatoDetalhado, updateCampeonato, atualizarEnderecoCampeonato, Status, Campeonato, CampeonatoDetalhado, fetchEtapas } from '@/services/api';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import { useSidebar } from '@/context/SidebarContext';
@@ -28,7 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 const MeuCampeonato = () => {
-  const { isCollapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebar();
+  const { toggle: toggleSidebar } = useSidebar();
   const [editOpen, setEditOpen] = useState(false);
   const navigate = useNavigate();
   const params = useParams<{ id?: string }>();
@@ -46,6 +44,19 @@ const MeuCampeonato = () => {
     queryKey: ['campeonato', campeonatoId],
     queryFn: () => campeonatoId ? fetchCampeonatoById(campeonatoId) : Promise.resolve(undefined),
     enabled: !!campeonatoId
+  });
+
+  const { data: campeonatoDet } = useQuery<CampeonatoDetalhado | undefined>({
+    queryKey: ['campeonatoDetalhado', campeonatoId],
+    queryFn: () => campeonatoId ? fetchCampeonatoDetalhado(campeonatoId) : Promise.resolve(undefined),
+    enabled: !!campeonatoId,
+    staleTime: 0,
+  });
+
+  const { data: etapasStatus } = useQuery({
+    queryKey: ['etapas', campeonatoId],
+    queryFn: () => (campeonatoId ? fetchEtapas(campeonatoId) : Promise.resolve(undefined)),
+    enabled: !!campeonatoId,
   });
 
 
@@ -138,15 +149,20 @@ const MeuCampeonato = () => {
     resultadosDefinidos: 7
   };
 
-  const etapas = [
-    { id: 1, nome: 'Cadastro do Campeonato', concluida: true, ativa: false },
-    { id: 2, nome: 'Vincular Modalidades', concluida: true, ativa: false },
-    { id: 3, nome: 'Criar Categorias', concluida: true, ativa: false },
-    { id: 4, nome: 'Inscrições (Atletas/Equipes)', concluida: true, ativa: false },
-    { id: 5, nome: 'Gerar Chaveamentos', concluida: false, ativa: true },
-    { id: 6, nome: 'Registrar Partidas', concluida: false, ativa: false },
-    { id: 7, nome: 'Resultados Finais', concluida: false, ativa: false }
-  ];
+
+  const cadastroConcluida = !!campeonato;
+  const temModalidades = (campeonatoDet?.modalidades?.length ?? 0) > 0;
+
+  const etapas = useMemo(() => {
+    return [
+      { id: 1, nome: 'Cadastro do Campeonato', concluida: cadastroConcluida, ativa: !temModalidades },
+      { id: 2, nome: 'Vincular Categorias', concluida: !!etapasStatus?.categoriasConfirmadas, ativa: temModalidades && !etapasStatus?.categoriasConfirmadas },
+      { id: 3, nome: 'Inscrições (Atletas/Equipes)', concluida: !!etapasStatus?.inscricoesConfirmadas, ativa: !!etapasStatus?.categoriasConfirmadas && !etapasStatus?.inscricoesConfirmadas },
+      { id: 4, nome: 'Gerar Chaveamentos', concluida: !!etapasStatus?.chaveamentoGerado, ativa: !!etapasStatus?.inscricoesConfirmadas && !etapasStatus?.chaveamentoGerado },
+      { id: 6, nome: 'Registrar Partidas', concluida: false, ativa: false },
+      { id: 7, nome: 'Resultados Finais', concluida: false, ativa: false },
+    ];
+  }, [cadastroConcluida, temModalidades, etapasStatus]);
 
   const getStatusColor = (status?: Status) => {
     switch (status) {
@@ -158,9 +174,24 @@ const MeuCampeonato = () => {
     }
   };
 
+  const confirmarCategoriasDisabled = !!etapasStatus?.categoriasConfirmadas;
+  let confirmarCategoriasTitle = '';
+  if (etapasStatus?.categoriasConfirmadas) {
+    confirmarCategoriasTitle = 'Categorias já confirmadas';
+  }
+
+  const confirmarInscricoesDisabled = !!etapasStatus?.inscricoesConfirmadas;
+  let confirmarInscricoesTitle = '';
+  if (etapasStatus?.inscricoesConfirmadas) {
+    confirmarInscricoesTitle = 'Inscrições já confirmadas';
+  }
+
+  const gerarChaveamentoDisabled = !etapasStatus?.inscricoesConfirmadas;
+  const gerarChaveamentoTitle = !etapasStatus?.inscricoesConfirmadas ? 'Confirme inscrições para gerar chaveamento' : '';
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar isCollapsed={sidebarCollapsed} />
+      <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header onToggleSidebar={toggleSidebar} />
         <main className="flex-1 p-6">
@@ -453,29 +484,30 @@ const MeuCampeonato = () => {
                   variant="outline"
                   className="h-16 flex flex-col gap-1"
                   onClick={() => campeonatoId && navigate(`/meu-campeonato/${campeonatoId}/modalidades`)}
+                  disabled={confirmarCategoriasDisabled}
+                  title={confirmarCategoriasTitle}
                 >
                   <Link className="w-5 h-5" />
-                  <span className="text-xs">Vincular Categorias</span>
-                </Button>
-                <Button variant="outline" className="h-16 flex flex-col gap-1">
-                  <List className="w-5 h-5" />
                   <span className="text-xs">Gerenciar Categorias</span>
-                </Button>
-                <Button variant="outline" className="h-16 flex flex-col gap-1">
-                  <UserPlus className="w-5 h-5" />
-                  <span className="text-xs">Inscrever Atletas</span>
-                </Button>
-                <Button variant="outline" className="h-16 flex flex-col gap-1">
-                  <Users className="w-5 h-5" />
-                  <span className="text-xs">Inscrever Equipes</span>
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-16 flex flex-col gap-1 bg-red-50 border-red-200 hover:bg-red-100"
-                  onClick={() => navigate('/chaveamentos-gerencia')}
+                  className="h-16 flex flex-col gap-1"
+                  disabled={confirmarInscricoesDisabled}
+                  title={confirmarInscricoesTitle}
+                  onClick={() => campeonatoId && navigate(`/meu-campeonato/${campeonatoId}/inscricoes`)}
                 >
-                  <GitBranch className="w-5 h-5 text-red-600" />
-                  <span className="text-xs text-red-600">Gerar Chaveamento</span>
+                  <UserPlus className="w-5 h-5" />
+                  <span className="text-xs">Gerenciar Inscrições</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col gap-1"
+                  disabled={gerarChaveamentoDisabled}
+                  title={gerarChaveamentoTitle}
+                >
+                  <Users className="w-5 h-5" />
+                  <span className="text-xs">Gerar Chaveamento</span>
                 </Button>
                 <Button variant="outline" className="h-16 flex flex-col gap-1">
                   <Award className="w-5 h-5" />
