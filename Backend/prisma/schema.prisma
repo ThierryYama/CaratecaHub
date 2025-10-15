@@ -118,6 +118,8 @@ model CampeonatoModalidade{
   categoria Categoria? @relation(fields: [idCategoria], references: [idCategoria])
   inscricoesAtleta InscricaoAtleta[]
   inscricoesEquipe InscricaoEquipe[]
+  partidasAtleta PartidaAtleta[]
+  partidasEquipe PartidaEquipe[]
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
 }
@@ -147,7 +149,11 @@ model InscricaoAtleta {
   status StatusInscricao @default(AGUARDANDO)
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
+  partidasComo1 PartidaAtleta[] @relation("atleta1")
+  partidasComo2 PartidaAtleta[] @relation("atleta2")
   @@unique([idAtleta, idCampeonatoModalidade])
+  @@index([idAtleta])
+  @@index([idCampeonatoModalidade])
 }
 
 model InscricaoEquipe {
@@ -159,8 +165,53 @@ model InscricaoEquipe {
   status StatusInscricao @default(AGUARDANDO)
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
+  partidasComo1 PartidaEquipe[] @relation("equipe1")
+  partidasComo2 PartidaEquipe[] @relation("equipe2")
   @@unique([idEquipe, idCampeonatoModalidade])
+  @@index([idEquipe])
+  @@index([idCampeonatoModalidade])
 }
+
+model PartidaAtleta {
+  idPartidaAtleta Int @id @default(autoincrement())
+  idCampeonatoModalidade Int
+  campeonatoModalidade CampeonatoModalidade @relation(fields: [idCampeonatoModalidade], references: [idCampeonatoModalidade])
+  idInscricaoAtleta1 Int?
+  idInscricaoAtleta2 Int?
+  inscricaoAtleta1 InscricaoAtleta? @relation("atleta1", fields: [idInscricaoAtleta1], references: [idInscricaoAtleta], onDelete: Cascade)
+  inscricaoAtleta2 InscricaoAtleta? @relation("atleta2", fields: [idInscricaoAtleta2], references: [idInscricaoAtleta], onDelete: SetNull)
+  round Int
+  position Int
+  resultado String? @db.VarChar(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+  @@index([idCampeonatoModalidade])
+  @@index([round, position])
+  @@unique([idCampeonatoModalidade, round, position])
+  @@index([idInscricaoAtleta1])
+  @@index([idInscricaoAtleta2])
+}
+
+model PartidaEquipe {
+  idPartidaEquipe Int @id @default(autoincrement())
+  idCampeonatoModalidade Int
+  campeonatoModalidade CampeonatoModalidade @relation(fields: [idCampeonatoModalidade], references: [idCampeonatoModalidade])
+  idInscricaoEquipe1 Int?
+  idInscricaoEquipe2 Int?
+  inscricaoEquipe1 InscricaoEquipe? @relation("equipe1", fields: [idInscricaoEquipe1], references: [idInscricaoEquipe], onDelete: Cascade)
+  inscricaoEquipe2 InscricaoEquipe? @relation("equipe2", fields: [idInscricaoEquipe2], references: [idInscricaoEquipe], onDelete: SetNull)
+  round Int
+  position Int
+  resultado String? @db.VarChar(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+  @@index([idCampeonatoModalidade])
+  @@index([round, position])
+  @@unique([idCampeonatoModalidade, round, position])
+  @@index([idInscricaoEquipe1])
+  @@index([idInscricaoEquipe2])
+}
+
 
 enum Modalidade {
   KATA
