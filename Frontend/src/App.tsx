@@ -10,6 +10,8 @@ import GerenciamentoCampeonato from "./pages/GerenciamentoCampeonato";
 import Chaveamento from "./pages/Chaveamento";
 import MeuCampeonato from "./pages/MeuCampeonato";
 import ChaveamentosGerencia from "./pages/ChaveamentosGerencia";
+import HistoricoBrackets from "./pages/HistoricoBrackets";
+import ResultadosFinais from "./pages/ResultadosFinais";
 import VincularModalidades from "./pages/VincularModalidades";
 import Categorias from "./pages/Categorias";
 import Atletas from "./pages/Atletas";
@@ -36,11 +38,13 @@ const App = () => (
             <Route path="/meu-campeonato/:id" element={<MeuCampeonato />} />
             <Route path="/meu-campeonato/:id/modalidades" element={<VincularCategorias />} />
             <Route path="/meu-campeonato/:id/inscricoes" element={<Inscricoes />} />
-            <Route path="/chaveamentos-gerencia" element={<ChaveamentosGerencia />} />
             <Route path="/vincular-modalidades" element={<VincularModalidades />} />
             <Route path="/categorias" element={<Categorias />} />
             <Route path="/atletas" element={<Atletas />} />
             <Route path="/equipes" element={<Equipes />} />
+            <Route path="/meu-campeonato/:id/chaveamentos" element={<ChaveamentosGerencia />} />
+            <Route path="/meu-campeonato/:id/historico" element={<HistoricoBrackets />} />
+            <Route path="/meu-campeonato/:id/resultados" element={<ResultadosFinais />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
