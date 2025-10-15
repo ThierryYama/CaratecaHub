@@ -13,6 +13,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   XCircle,
+  GitBranch,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -89,10 +90,11 @@ const SidebarComponent = ({ onItemClick }: SidebarProps) => {
       icon: Crown,
       path: `/meu-campeonato/${effectiveId}`,
       children: [
-        { id: 'ranking', label: 'Ranking', icon: Medal, path: `/meu-campeonato/${effectiveId}/ranking` },
-        { id: 'resultados', label: 'Resultados', icon: Trophy, path: `/meu-campeonato/${effectiveId}/resultados` },
         { id: 'inscricoes', label: 'Inscrições', icon: UserPlus, path: `/meu-campeonato/${effectiveId}/inscricoes` },
         { id: 'modalidades', label: 'Categorias', icon: Link, path: `/meu-campeonato/${effectiveId}/modalidades` },
+        { id: 'chaveamentos', label: 'Chaveamentos', icon: GitBranch, path: `/meu-campeonato/${effectiveId}/chaveamentos` },
+        { id: 'historico', label: 'Histórico', icon: Trophy, path: `/meu-campeonato/${effectiveId}/historico` },
+        { id: 'resultados', label: 'Resultados', icon: Medal, path: `/meu-campeonato/${effectiveId}/resultados` },
         { id: 'sair-contexto', label: 'Sair', icon: XCircle, path: '#' },
       ]
     };
@@ -153,7 +155,8 @@ const SidebarComponent = ({ onItemClick }: SidebarProps) => {
               const childActive = location.pathname === child.path;
               let childStyle: string;
               const disabledChild = (child.id === 'inscricoes' && !!etapasStatus?.inscricoesConfirmadas)
-                || (child.id === 'modalidades' && !!etapasStatus?.categoriasConfirmadas);
+                || (child.id === 'modalidades' && !!etapasStatus?.categoriasConfirmadas)
+                || (child.id === 'chaveamentos' && !!etapasStatus?.chaveamentoGerado);
               if (child.id === 'sair-contexto') {
                 childStyle = 'text-gray-500 hover:bg-gray-800 hover:text-white';
               } else if (childActive) {
@@ -163,7 +166,9 @@ const SidebarComponent = ({ onItemClick }: SidebarProps) => {
               }
               let childTitle: string | undefined = undefined;
               if (disabledChild) {
-                childTitle = child.id === 'inscricoes' ? 'Inscrições já confirmadas' : 'Categorias já confirmadas';
+                if (child.id === 'inscricoes') childTitle = 'Inscrições já confirmadas';
+                else if (child.id === 'modalidades') childTitle = 'Categorias já confirmadas';
+                else if (child.id === 'chaveamentos') childTitle = 'Campeões já definidos';
               }
               return (
                 <button
