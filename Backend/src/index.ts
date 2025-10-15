@@ -3,9 +3,9 @@ import cors from 'cors';
 import RotaCategoria from './routes/RotaCategoria';
 import RotaAtleta from './routes/RotaAtletas';
 import RotaEquipe from './routes/RotaEquipe';
-import prisma from './lib/prisma';
 import RotaCampeonato from './routes/RotaCampeonato';
 import RotaInscricao from './routes/RotaInscricao';
+import RotaChaveamento from './routes/RotaChaveamento';
 
 
 const port = process.env.PORT || 3000;
@@ -24,6 +24,7 @@ app.use(RotaAtleta);
 app.use(RotaEquipe);
 app.use(RotaCampeonato);
 app.use(RotaInscricao);
+app.use(RotaChaveamento);
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({ error: 'Endpoint não encontrado.' });
