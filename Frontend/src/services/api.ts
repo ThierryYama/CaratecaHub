@@ -415,5 +415,75 @@ export const updateInscricaoEquipe = async (id: number, data: InscricaoEquipeUpd
   return response.data;
 };
 
+export interface InscricaoAtletaWithAtleta extends InscricaoAtleta {
+  atleta?: Atleta;
+}
+
+export interface InscricaoEquipeWithEquipe extends InscricaoEquipe {
+  equipe?: Equipe;
+}
+
+export interface PartidaAtletaResponse {
+  idPartidaAtleta: number;
+  idCampeonatoModalidade: number;
+  idInscricaoAtleta1: number | null;
+  idInscricaoAtleta2: number | null;
+  round: number;
+  position: number;
+  resultado: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  inscricaoAtleta1?: (InscricaoAtletaWithAtleta & { atleta?: Atleta }) | null;
+  inscricaoAtleta2?: (InscricaoAtletaWithAtleta & { atleta?: Atleta }) | null;
+}
+
+export interface PartidaEquipeResponse {
+  idPartidaEquipe: number;
+  idCampeonatoModalidade: number;
+  idInscricaoEquipe1: number | null;
+  idInscricaoEquipe2: number | null;
+  round: number;
+  position: number;
+  resultado: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  inscricaoEquipe1?: (InscricaoEquipeWithEquipe & { equipe?: Equipe }) | null;
+  inscricaoEquipe2?: (InscricaoEquipeWithEquipe & { equipe?: Equipe }) | null;
+}
+
+export const gerarChaveamentoCategoria = async (idCampeonatoModalidade: number): Promise<{ message: string }> => {
+  const response = await api.post(`/chaveamento/gerar/${idCampeonatoModalidade}`);
+  return response.data;
+};
+
+export const resetChaveamentoCategoria = async (idCampeonatoModalidade: number): Promise<void> => {
+  await api.delete(`/chaveamento/reset/${idCampeonatoModalidade}`);
+};
+
+export const fetchPartidasAtletaPorCategoria = async (idCampeonatoModalidade: number): Promise<PartidaAtletaResponse[]> => {
+  const response = await api.get(`/chaveamento/partidas/atleta/${idCampeonatoModalidade}`);
+  return response.data;
+};
+
+export const fetchPartidasEquipePorCategoria = async (idCampeonatoModalidade: number): Promise<PartidaEquipeResponse[]> => {
+  const response = await api.get(`/chaveamento/partidas/equipe/${idCampeonatoModalidade}`);
+  return response.data;
+};
+
+export interface AdvanceResult {
+  nextId?: number;
+  championId?: number;
+}
+
+export const avancarPartidaAtleta = async (idPartida: number, vencedor: 1 | 2): Promise<AdvanceResult> => {
+  const response = await api.post('/chaveamento/avancar/atleta', { idPartida, vencedor });
+  return response.data;
+};
+
+export const avancarPartidaEquipe = async (idPartida: number, vencedor: 1 | 2): Promise<AdvanceResult> => {
+  const response = await api.post('/chaveamento/avancar/equipe', { idPartida, vencedor });
+  return response.data;
+};
+
 
 export default api
