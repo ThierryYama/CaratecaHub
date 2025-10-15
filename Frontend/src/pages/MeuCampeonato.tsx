@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Trophy,
   Users,
@@ -7,7 +7,6 @@ import {
   Pencil,
   UserPlus,
   Medal,
-  FileText,
   CheckCircle,
   Play,
   Square,
@@ -43,7 +42,8 @@ const MeuCampeonato = () => {
   const { data: campeonato, isLoading, isError, error } = useQuery<Campeonato | undefined>({
     queryKey: ['campeonato', campeonatoId],
     queryFn: () => campeonatoId ? fetchCampeonatoById(campeonatoId) : Promise.resolve(undefined),
-    enabled: !!campeonatoId
+    enabled: !!campeonatoId,
+    refetchOnMount: 'always'
   });
 
   const { data: campeonatoDet } = useQuery<CampeonatoDetalhado | undefined>({
@@ -51,12 +51,14 @@ const MeuCampeonato = () => {
     queryFn: () => campeonatoId ? fetchCampeonatoDetalhado(campeonatoId) : Promise.resolve(undefined),
     enabled: !!campeonatoId,
     staleTime: 0,
+    refetchOnMount: 'always'
   });
 
   const { data: etapasStatus } = useQuery({
     queryKey: ['etapas', campeonatoId],
     queryFn: () => (campeonatoId ? fetchEtapas(campeonatoId) : Promise.resolve(undefined)),
     enabled: !!campeonatoId,
+    refetchOnMount: 'always'
   });
 
 
@@ -152,17 +154,41 @@ const MeuCampeonato = () => {
 
   const cadastroConcluida = !!campeonato;
   const temModalidades = (campeonatoDet?.modalidades?.length ?? 0) > 0;
+  const categoriasConfirmadas = !!etapasStatus?.categoriasConfirmadas;
+  const inscricoesConfirmadas = !!etapasStatus?.inscricoesConfirmadas;
+  const campeoesDefinidos = !!etapasStatus?.chaveamentoGerado;
+
+  const autoStatusMutation = useMutation<Campeonato, Error, Status>({
+    mutationFn: async (novoStatus: Status) => {
+      if (!campeonatoId) throw new Error('ID inválido');
+      return updateCampeonato(campeonatoId, { status: novoStatus });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campeonato', campeonatoId] });
+    }
+  });
+
+  useEffect(() => {
+    if (!campeonato || autoStatusMutation.isPending) return;
+    if (inscricoesConfirmadas && campeonato.status === Status.PENDENTE) {
+      autoStatusMutation.mutate(Status.EM_ANDAMENTO);
+      return;
+    }
+    if (campeoesDefinidos && campeonato.status !== Status.FINALIZADO) {
+      autoStatusMutation.mutate(Status.FINALIZADO);
+    }
+  }, [campeonato, inscricoesConfirmadas, campeoesDefinidos, autoStatusMutation.isPending, autoStatusMutation.mutate]);
 
   const etapas = useMemo(() => {
     return [
       { id: 1, nome: 'Cadastro do Campeonato', concluida: cadastroConcluida, ativa: !temModalidades },
-      { id: 2, nome: 'Vincular Categorias', concluida: !!etapasStatus?.categoriasConfirmadas, ativa: temModalidades && !etapasStatus?.categoriasConfirmadas },
-      { id: 3, nome: 'Inscrições (Atletas/Equipes)', concluida: !!etapasStatus?.inscricoesConfirmadas, ativa: !!etapasStatus?.categoriasConfirmadas && !etapasStatus?.inscricoesConfirmadas },
-      { id: 4, nome: 'Gerar Chaveamentos', concluida: !!etapasStatus?.chaveamentoGerado, ativa: !!etapasStatus?.inscricoesConfirmadas && !etapasStatus?.chaveamentoGerado },
-      { id: 6, nome: 'Registrar Partidas', concluida: false, ativa: false },
-      { id: 7, nome: 'Resultados Finais', concluida: false, ativa: false },
+      { id: 2, nome: 'Vincular Categorias', concluida: categoriasConfirmadas, ativa: temModalidades && !categoriasConfirmadas },
+      { id: 3, nome: 'Inscrições (Atletas/Equipes)', concluida: inscricoesConfirmadas, ativa: categoriasConfirmadas && !inscricoesConfirmadas },
+      { id: 4, nome: 'Chaveamento e Partidas', concluida: campeoesDefinidos, ativa: inscricoesConfirmadas && !campeoesDefinidos },
+      // Resultados Finais é concluída automaticamente junto com campeoesDefinidos
+      { id: 5, nome: 'Resultados Finais', concluida: campeoesDefinidos, ativa: campeoesDefinidos },
     ];
-  }, [cadastroConcluida, temModalidades, etapasStatus]);
+  }, [cadastroConcluida, temModalidades, categoriasConfirmadas, inscricoesConfirmadas, campeoesDefinidos]);
 
   const getStatusColor = (status?: Status) => {
     switch (status) {
@@ -174,20 +200,25 @@ const MeuCampeonato = () => {
     }
   };
 
-  const confirmarCategoriasDisabled = !!etapasStatus?.categoriasConfirmadas;
+  const confirmarCategoriasDisabled = categoriasConfirmadas;
   let confirmarCategoriasTitle = '';
-  if (etapasStatus?.categoriasConfirmadas) {
+  if (categoriasConfirmadas) {
     confirmarCategoriasTitle = 'Categorias já confirmadas';
   }
 
-  const confirmarInscricoesDisabled = !!etapasStatus?.inscricoesConfirmadas;
+  const confirmarInscricoesDisabled = inscricoesConfirmadas;
   let confirmarInscricoesTitle = '';
-  if (etapasStatus?.inscricoesConfirmadas) {
+  if (inscricoesConfirmadas) {
     confirmarInscricoesTitle = 'Inscrições já confirmadas';
   }
 
-  const gerarChaveamentoDisabled = !etapasStatus?.inscricoesConfirmadas;
-  const gerarChaveamentoTitle = !etapasStatus?.inscricoesConfirmadas ? 'Confirme inscrições para gerar chaveamento' : '';
+  const gerarChaveamentoDisabled = !inscricoesConfirmadas || campeoesDefinidos;
+  let gerarChaveamentoTitle = '';
+  if (!inscricoesConfirmadas) {
+    gerarChaveamentoTitle = 'Confirme inscrições para gerar chaveamento';
+  } else if (campeoesDefinidos) {
+    gerarChaveamentoTitle = 'Todos os campeões foram definidos';
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -505,21 +536,26 @@ const MeuCampeonato = () => {
                   className="h-16 flex flex-col gap-1"
                   disabled={gerarChaveamentoDisabled}
                   title={gerarChaveamentoTitle}
+                  onClick={() => campeonatoId && navigate(`/meu-campeonato/${campeonatoId}/chaveamentos`)}
                 >
                   <Users className="w-5 h-5" />
-                  <span className="text-xs">Gerar Chaveamento</span>
+                  <span className="text-xs text-center">Chaveamento e Partidas</span>
                 </Button>
-                <Button variant="outline" className="h-16 flex flex-col gap-1">
-                  <Award className="w-5 h-5" />
-                  <span className="text-xs">Registrar Partidas</span>
+                <Button 
+                  variant="outline" 
+                  className="h-16 flex flex-col gap-1"
+                  onClick={() => campeonatoId && navigate(`/meu-campeonato/${campeonatoId}/historico`)}
+                >
+                  <Trophy className="w-5 h-5" />
+                  <span className="text-xs">Histórico de Brackets</span>
                 </Button>
-                <Button variant="outline" className="h-16 flex flex-col gap-1">
+                <Button 
+                  variant="outline" 
+                  className="h-16 flex flex-col gap-1"
+                  onClick={() => campeonatoId && navigate(`/meu-campeonato/${campeonatoId}/resultados`)}
+                >
                   <Medal className="w-5 h-5" />
-                  <span className="text-xs">Visualizar Pódio</span>
-                </Button>
-                <Button variant="outline" className="h-16 flex flex-col gap-1">
-                  <FileText className="w-5 h-5" />
-                  <span className="text-xs">Gerar Relatórios</span>
+                  <span className="text-xs">Resultados Finais</span>
                 </Button>
               </div>
             </CardContent>
