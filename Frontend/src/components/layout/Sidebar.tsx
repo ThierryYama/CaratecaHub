@@ -41,6 +41,7 @@ interface MenuItemBase {
 const baseItems: MenuItemBase[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
   { id: 'campeonatos', label: 'Campeonatos', icon: CalendarDays, path: '/campeonatos' },
+  { id: 'campeonatos-publicos', label: 'Campeonatos Públicos', icon: CalendarDays, path: '/campeonatos-publicos' },
   { id: 'categorias', label: 'Categorias', icon: List, path: '/categorias' },
   { id: 'atletas', label: 'Atletas', icon: UserRound, path: '/atletas' },
   { id: 'equipes', label: 'Equipes', icon: Users, path: '/equipes' },
@@ -101,6 +102,7 @@ const SidebarComponent = ({ onItemClick }: SidebarProps) => {
     return [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
       { id: 'campeonatos', label: 'Campeonatos', icon: CalendarDays, path: '/campeonatos' },
+      { id: 'campeonatos-publicos', label: 'Campeonatos Públicos', icon: CalendarDays, path: '/campeonatos-publicos' },
       contexto,
       { id: 'categorias', label: 'Categorias', icon: List, path: '/categorias' },
       { id: 'atletas', label: 'Atletas', icon: UserRound, path: '/atletas' },
