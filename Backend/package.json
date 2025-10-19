@@ -3,28 +3,28 @@
   "version": "1.0.0",
   "main": "index.js",
   "prisma": {
-  "seed": "tsx prisma/seeders/seed.ts"
+    "seed": "tsx prisma/seeders/seed.ts"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon -L --exec ts-node src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-  "prisma:generate": "prisma generate",
-  "prisma:migrate": "prisma migrate dev",
-  "prisma:studio": "prisma studio",
-  "db:seed": "prisma db seed"
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "db:seed": "prisma db seed"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^24.3.0",
-    "@types/bcryptjs": "^2.4.6",
     "nodemon": "^3.1.10",
     "prisma": "^6.14.0",
     "ts-node": "^10.9.2",
