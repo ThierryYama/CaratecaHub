@@ -24,7 +24,6 @@ async function run() {
     data: {
       nome: 'Associação Dragão',
       cnpj: '12.345.678/0001-90',
-      endereco: 'Rua A, 123',
       telefone: '(11) 99999-0001',
       email: 'contato@dragao.com',
       senha: await bcrypt.hash('senha123', 10),
@@ -36,7 +35,6 @@ async function run() {
     data: {
       nome: 'Associação Tigre',
       cnpj: '98.765.432/0001-10',
-      endereco: 'Av. B, 456',
       telefone: '(21) 98888-0002',
       email: 'contato@tigre.com',
       senha: await bcrypt.hash('senha123', 10),
@@ -70,6 +68,7 @@ async function run() {
       graduacaoMin: '10° Kyu',
       graduacaoMax: '7° Kyu',
       modalidade: 'KATA',
+      idAssociacao: assoc1.idAssociacao,
     },
   });
 
@@ -85,6 +84,7 @@ async function run() {
       graduacaoMin: '3° Kyu',
       graduacaoMax: '1° Kyu',
       modalidade: 'KUMITE',
+      idAssociacao: assoc1.idAssociacao,
     },
   });
 
@@ -96,6 +96,7 @@ async function run() {
       genero: 'Misto',
       descricao: 'Kata por equipes mistas',
       modalidade: 'KATA_EQUIPE',
+      idAssociacao: assoc1.idAssociacao,
     },
   });
 
@@ -107,6 +108,7 @@ async function run() {
       genero: 'Masculino',
       descricao: 'Kumite por equipes masculinas',
       modalidade: 'KUMITE_EQUIPE',
+      idAssociacao: assoc2.idAssociacao,
     },
   });
 
