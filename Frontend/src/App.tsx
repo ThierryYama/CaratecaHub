@@ -19,6 +19,8 @@ import NotFound from "./pages/NotFound";
 import Equipes from "./pages/Equipes";
 import VincularCategorias from "./pages/VincularCategoria";
 import Inscricoes from "./pages/Inscricoes";
+import CampeonatosPublicos from "./pages/CampeonatosPublicos";
+import InscreverAtletas from "./pages/InscreverAtletas";
 import { SidebarProvider } from "./context/SidebarContext";
 
 const queryClient = new QueryClient();
@@ -35,6 +37,8 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/" element={<Index />} /> 
             <Route path="/campeonatos" element={<Campeonatos />} /> 
+            <Route path="/campeonatos-publicos" element={<CampeonatosPublicos />} /> 
+            <Route path="/inscrever-atletas/:id" element={<InscreverAtletas />} /> 
             <Route path="/meu-campeonato/:id" element={<MeuCampeonato />} /> 
             <Route path="/meu-campeonato/:id/modalidades" element={<VincularCategorias />} /> 
             <Route path="/meu-campeonato/:id/inscricoes" element={<Inscricoes />} /> 
