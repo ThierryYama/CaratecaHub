@@ -138,7 +138,7 @@ const Register = () => {
       <Card className="w-full max-w-2xl shadow-lg">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <img src="/logo.png" alt="CaratecaHub Logo" className="h-20 w-auto" />
+            <img src="/logo.png" alt="CaratecaHub Logo" className="h-50 w-40" />
           </div>
           <CardTitle className="text-2xl font-bold text-red-600">Crie sua conta</CardTitle>
           <CardDescription>
