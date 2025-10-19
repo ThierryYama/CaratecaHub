@@ -23,12 +23,9 @@ export const registrar = async (req: Request, res: Response) => {
 
     const hash = await bcrypt.hash(senha, 10);
     const addr = endereco as { rua?: string; numero?: string; complemento?: string; bairro?: string; cidade?: string; estado?: string; cep?: string } | undefined;
-    const enderecoStr = addr?.rua && addr?.numero && addr?.bairro && addr?.cidade && addr?.estado
-      ? `${addr.rua}, ${addr.numero} - ${addr.bairro} - ${addr.cidade}/${addr.estado}`
-      : '';
 
     const associacao = await prisma.associacao.create({
-      data: { nome, cnpj, endereco: enderecoStr, telefone, email, senha: hash, sigla: sigla ?? null }
+      data: { nome, cnpj, telefone, email, senha: hash, sigla: sigla ?? null }
     });
 
     let enderecoCriado = null as any;
