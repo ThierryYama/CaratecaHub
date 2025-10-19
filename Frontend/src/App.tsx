@@ -14,6 +14,7 @@ import HistoricoBrackets from "./pages/HistoricoBrackets";
 import ResultadosFinais from "./pages/ResultadosFinais";
 import Categorias from "./pages/Categorias";
 import Atletas from "./pages/Atletas";
+import Perfil from "./pages/Perfil";
 import NotFound from "./pages/NotFound";
 import Equipes from "./pages/Equipes";
 import VincularCategorias from "./pages/VincularCategoria";
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/categorias" element={<Categorias />} /> 
             <Route path="/atletas" element={<Atletas />} /> 
             <Route path="/equipes" element={<Equipes />} /> 
+            <Route path="/perfil" element={<Perfil />} /> 
             <Route path="/meu-campeonato/:id/chaveamentos" element={<ChaveamentosGerencia />} /> 
             <Route path="/meu-campeonato/:id/historico" element={<HistoricoBrackets />} /> 
             <Route path="/meu-campeonato/:id/resultados" element={<ResultadosFinais />} /> 
