@@ -7,6 +7,7 @@ import RotaCampeonato from './routes/RotaCampeonato';
 import RotaInscricao from './routes/RotaInscricao';
 import RotaChaveamento from './routes/RotaChaveamento';
 import RotaAuth from './routes/RotaAuth';
+import RotaPerfil from './routes/RotaPerfil';
 import { authMiddleware } from './middleware/auth';
 
 
@@ -30,6 +31,7 @@ app.use(RotaEquipe);
 app.use(RotaCampeonato);
 app.use(RotaInscricao);
 app.use(RotaChaveamento);
+app.use(RotaPerfil);
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({ error: 'Endpoint não encontrado.' });
