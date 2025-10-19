@@ -17,6 +17,23 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('associacao');
+      localStorage.removeItem('currentCampeonatoId');
+      
+      const currentPath = globalThis.location.pathname;
+      if (currentPath !== '/login' && currentPath !== '/register') {
+        globalThis.location.href = '/login';
+      }
+    }
+    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+  }
+);
+
 
 export interface Categoria {
   idCategoria: number;
