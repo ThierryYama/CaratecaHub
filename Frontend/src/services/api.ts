@@ -6,8 +6,15 @@ const api = axios.create({
   baseURL: "http://localhost:5000",
   headers: {
     "Content-Type": "application/json",
-    "Authorization": `Bearer ${localStorage.getItem("token")}`,
   },
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
 });
 
 
@@ -76,19 +83,23 @@ export const fetchAtletas = async (): Promise<Atleta[]> => {
 };
 
 export const createAtleta = async (atleta: AtletaInput): Promise<Atleta> => {
+    const assoc = getStoredAssociacao();
+    if (!assoc) throw new Error('Usuário não autenticado');
     const payload = {
         ...atleta,
         dataNascimento: atleta.dataNascimento.includes('T')
             ? atleta.dataNascimento
             : `${atleta.dataNascimento}T00:00:00.000Z`,
-        idAssociacao: 1,
+        idAssociacao: assoc.idAssociacao,
     };
     const response = await api.post('/cadastrarAtleta', payload);
     return response.data;
 }
 
 export const updateAtleta = async (id: number, atleta: Partial<AtletaInput>): Promise<Atleta> => {
-    const payload: any = { ...atleta, idAssociacao: 1 };
+    const assoc = getStoredAssociacao();
+    if (!assoc) throw new Error('Usuário não autenticado');
+    const payload: any = { ...atleta, idAssociacao: assoc.idAssociacao };
     if (payload.dataNascimento) {
         payload.dataNascimento = payload.dataNascimento.includes('T')
             ? payload.dataNascimento
@@ -222,8 +233,8 @@ export const fetchCampeonatos = async (): Promise<Campeonato[]> => {
   return response.data;
 };
 
-export const fetchCampeonatosPorAssociacao = async (idAssociacao: number): Promise<Campeonato[]> => {
-  const response = await api.get(`/listarCampeonatosPorIdDeAssociacao/${idAssociacao}`);
+export const fetchCampeonatosPorAssociacao = async (_idAssociacao: number): Promise<Campeonato[]> => {
+  const response = await api.get('/listarCampeonatos');
   return response.data;
 };
 
@@ -485,5 +496,68 @@ export const avancarPartidaEquipe = async (idPartida: number, vencedor: 1 | 2): 
   return response.data;
 };
 
+export interface Associacao {
+  idAssociacao: number;
+  nome: string;
+  email: string;
+  sigla?: string | null;
+}
+
+export interface LoginResponse {
+  token: string;
+  associacao: Associacao;
+}
+
+export interface RegisterInput {
+  nome: string;
+  cnpj: string;
+  telefone: string;
+  email: string;
+  senha: string;
+  sigla?: string;
+  endereco?: {
+    rua: string;
+    numero: string;
+    complemento?: string;
+    bairro: string;
+    cidade: string;
+    estado: string;
+    cep: string;
+  };
+}
+
+export interface RegisterResponse extends LoginResponse {
+  endereco?: Endereco | null;
+}
+
+export const login = async (email: string, senha: string): Promise<LoginResponse> => {
+  const response = await api.post('/auth/login', { email, senha });
+  const { token, associacao } = response.data;
+  localStorage.setItem('token', token);
+  localStorage.setItem('associacao', JSON.stringify(associacao));
+  api.defaults.headers['Authorization'] = `Bearer ${token}`;
+  return response.data;
+};
+
+export const register = async (data: RegisterInput): Promise<RegisterResponse> => {
+  const response = await api.post('/auth/registrar', data);
+  const { token, associacao } = response.data;
+  localStorage.setItem('token', token);
+  localStorage.setItem('associacao', JSON.stringify(associacao));
+  api.defaults.headers['Authorization'] = `Bearer ${token}`;
+  return response.data;
+};
+
+export const logout = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('associacao');
+  localStorage.removeItem('currentCampeonatoId');
+  api.defaults.headers['Authorization'] = '';
+};
+
+export const getStoredAssociacao = (): Associacao | null => {
+  const stored = localStorage.getItem('associacao');
+  return stored ? JSON.parse(stored) : null;
+};
 
 export default api

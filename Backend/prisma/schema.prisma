@@ -28,6 +28,8 @@ model Categoria {
   graduacaoMax  String?   @db.VarChar(45)
   campeonatos   CampeonatoModalidade[]
   modalidade Modalidade
+  idAssociacao Int?
+  associacao   Associacao? @relation(fields: [idAssociacao], references: [idAssociacao])
   createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
 }
@@ -36,7 +38,6 @@ model Associacao {
   idAssociacao Int       @id @default(autoincrement())
   nome         String    @db.VarChar(255)
   cnpj         String    @db.VarChar(45)
-  endereco     String    @db.VarChar(255)
   telefone     String    @db.VarChar(45)
   email        String    @db.VarChar(100)
   senha        String    @db.VarChar(255)
@@ -45,6 +46,7 @@ model Associacao {
   atletas      Atleta[]
   equipes      Equipe[]
   enderecos Endereco[]
+  categorias   Categoria[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime? @updatedAt
   deletedAt    DateTime?

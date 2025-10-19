@@ -6,6 +6,8 @@ import RotaEquipe from './routes/RotaEquipe';
 import RotaCampeonato from './routes/RotaCampeonato';
 import RotaInscricao from './routes/RotaInscricao';
 import RotaChaveamento from './routes/RotaChaveamento';
+import RotaAuth from './routes/RotaAuth';
+import { authMiddleware } from './middleware/auth';
 
 
 const port = process.env.PORT || 3000;
@@ -18,7 +20,10 @@ app.use(cors({
 
 app.use(express.json());
 
-//Rotas 
+app.use(RotaAuth);
+
+app.use(authMiddleware);
+
 app.use(RotaCategoria);
 app.use(RotaAtleta);
 app.use(RotaEquipe);

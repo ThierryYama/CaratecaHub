@@ -1,9 +1,11 @@
-import { Request, Response } from "express";
+import { Response } from "express";
+import { AuthRequest } from '../middleware/auth';
 import prisma from '../lib/prisma';
 
 
-export const cadastrarEquipe = async (req: Request, res: Response) => {
-  const { nome, descricao, idAssociacao, atletasIds, genero } = req.body;
+export const cadastrarEquipe = async (req: AuthRequest, res: Response) => {
+  const { nome, descricao, atletasIds, genero } = req.body;
+  const idAssociacao = req.user!.idAssociacao;
 
   if (!nome || !idAssociacao || !atletasIds) {
     return res.status(400).json({ error: "Nome, idAssociacao e atletasIds são obrigatórios." });
@@ -57,9 +59,11 @@ export const cadastrarEquipe = async (req: Request, res: Response) => {
   }
 };
 
-export const listarTodasEquipes = async (req: Request, res: Response) => {
+export const listarTodasEquipes = async (req: AuthRequest, res: Response) => {
   try {
+    const idAssociacao = req.user!.idAssociacao;
     const equipes = await prisma.equipe.findMany({
+      where: { idAssociacao },
       include: {
         membros: {
           include: {
@@ -76,7 +80,7 @@ export const listarTodasEquipes = async (req: Request, res: Response) => {
 };
 
 
-export const atualizarEquipe = async (req: Request, res: Response) => {
+export const atualizarEquipe = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { nome, descricao, genero } = req.body;
 
@@ -88,10 +92,13 @@ export const atualizarEquipe = async (req: Request, res: Response) => {
       }
       dataUpdate.genero = genero;
     }
-    const equipe = await prisma.equipe.update({
-      where: { idEquipe: Number(id) },
+    const idAssociacao = req.user!.idAssociacao;
+    const result = await prisma.equipe.updateMany({
+      where: { idEquipe: Number(id), idAssociacao },
       data: dataUpdate,
     });
+    if (result.count === 0) return res.status(404).json({ error: "Equipe não encontrada" });
+    const equipe = await prisma.equipe.findFirst({ where: { idEquipe: Number(id), idAssociacao } });
     return res.status(200).json(equipe);
   } catch (error) {
     console.error(error);
@@ -99,12 +106,12 @@ export const atualizarEquipe = async (req: Request, res: Response) => {
   }
 };
 
-export const deletarEquipe = async (req: Request, res: Response) => {
+export const deletarEquipe = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   try {
-    await prisma.equipe.delete({
-      where: { idEquipe: Number(id) },
-    });
+    const idAssociacao = req.user!.idAssociacao;
+    const result = await prisma.equipe.deleteMany({ where: { idEquipe: Number(id), idAssociacao } });
+    if (result.count === 0) return res.status(404).json({ error: "Equipe não encontrada" });
     return res.status(204).send();
   } catch (error) {
     console.error(error);
@@ -112,13 +119,14 @@ export const deletarEquipe = async (req: Request, res: Response) => {
   }
 };
 
-export const adicionarAtletaAEquipe = async (req: Request, res: Response) => {
+export const adicionarAtletaAEquipe = async (req: AuthRequest, res: Response) => {
     const { idEquipe, idAtleta } = req.params;
 
     try {
+        const idAssociacao = req.user!.idAssociacao;
         const [equipe, atleta] = await Promise.all([
-          prisma.equipe.findUnique({ where: { idEquipe: Number(idEquipe) } }),
-          prisma.atleta.findUnique({ where: { idAtleta: Number(idAtleta) } }),
+          prisma.equipe.findFirst({ where: { idEquipe: Number(idEquipe), idAssociacao } }),
+          prisma.atleta.findFirst({ where: { idAtleta: Number(idAtleta), idAssociacao } }),
         ]);
 
         if (!equipe || !atleta) {
@@ -146,18 +154,16 @@ export const adicionarAtletaAEquipe = async (req: Request, res: Response) => {
     }
 };
 
-export const deletarAtletaDaEquipe = async (req: Request, res: Response) => {
+export const deletarAtletaDaEquipe = async (req: AuthRequest, res: Response) => {
     const { idEquipe, idAtleta } = req.params;
 
     try {
-        await prisma.equipeAtleta.delete({
-            where: {
-                idEquipe_idAtleta: {
-                    idEquipe: Number(idEquipe),
-                    idAtleta: Number(idAtleta)
-                }
-            }
-        });
+    const idAssociacao = req.user!.idAssociacao;
+    const equipe = await prisma.equipe.findFirst({ where: { idEquipe: Number(idEquipe), idAssociacao } });
+    if (!equipe) return res.status(404).json({ error: "Equipe não encontrada" });
+    await prisma.equipeAtleta.delete({
+      where: { idEquipe_idAtleta: { idEquipe: Number(idEquipe), idAtleta: Number(idAtleta) } }
+    });
         return res.status(204).send();
     } catch (error) {
         if ((error as any).code === 'P2025') {

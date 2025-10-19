@@ -5,8 +5,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Campeonatos from "./pages/Campeonatos";
-import GerenciamentoCampeonato from "./pages/GerenciamentoCampeonato";
 import MeuCampeonato from "./pages/MeuCampeonato";
 import ChaveamentosGerencia from "./pages/ChaveamentosGerencia";
 import HistoricoBrackets from "./pages/HistoricoBrackets";
@@ -29,6 +30,8 @@ const App = () => (
       <SidebarProvider>
         <BrowserRouter>
           <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/" element={<Index />} /> 
             <Route path="/campeonatos" element={<Campeonatos />} /> 
             <Route path="/meu-campeonato/:id" element={<MeuCampeonato />} /> 

@@ -23,6 +23,7 @@ import {
   deleteEquipe,
   vincularAtletaEquipe,
   removerAtletaEquipe,
+  getStoredAssociacao,
   Equipe,
   Atleta,
   EquipeInput,
@@ -139,7 +140,12 @@ const Equipes: React.FC = () => {
     if (equipeEditando) {
       updateMutation.mutate({ id: equipeEditando.idEquipe, data: { nome: formData.nome, descricao: formData.descricao, genero: formData.genero } });
     } else {
-      createMutation.mutate({ ...formData, idAssociacao: 1, genero: formData.genero });
+      const assoc = getStoredAssociacao();
+      if (!assoc) {
+        toast({ title: 'Erro: Usuário não autenticado', variant: 'destructive' });
+        return;
+      }
+      createMutation.mutate({ ...formData, idAssociacao: assoc.idAssociacao, genero: formData.genero });
     }
   };
 

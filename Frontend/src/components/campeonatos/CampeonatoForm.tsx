@@ -52,19 +52,18 @@ const CampeonatoForm: React.FC<CampeonatoFormProps> = ({ idAssociacao, onSuccess
     mutationFn: async () => {
       const payload = {
         nome: values.nome.trim(),
-        descricao: values.descricao.trim(),
+        descricao: values.descricao.trim() || undefined,
         dataInicio: new Date(values.dataInicio).toISOString(),
-        dataFim: new Date(values.dataFim).toISOString(),
+        dataFim: values.dataFim ? new Date(values.dataFim).toISOString() : undefined,
         idAssociacao,
         endereco: {
           rua: values.rua.trim(),
           numero: values.numero.trim(),
           complemento: values.complemento.trim() || undefined,
           bairro: values.bairro.trim(),
-            cidade: values.cidade.trim(),
-            estado: values.estado.trim(),
-            cep: values.cep.trim(),
-            idAssociacao,
+          cidade: values.cidade.trim(),
+          estado: values.estado.trim(),
+          cep: values.cep.trim(),
         }
       };
       return createCampeonato(payload as any);

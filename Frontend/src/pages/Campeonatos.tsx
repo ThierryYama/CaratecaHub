@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import CampeonatoForm from '@/components/campeonatos/CampeonatoForm';
 import { useQuery } from '@tanstack/react-query';
-import { fetchCampeonatosPorAssociacao, fetchCampeonatoById, Campeonato, Status } from '@/services/api';
+import { fetchCampeonatosPorAssociacao, fetchCampeonatoById, getStoredAssociacao, Campeonato, Status } from '@/services/api';
 
 const Campeonatos = () => {
   const navigate = useNavigate();
@@ -18,13 +18,21 @@ const Campeonatos = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [openNovo, setOpenNovo] = useState(false);
-  const idAssociacao = 1; 
+  
+  const assoc = getStoredAssociacao();
+  const idAssociacao = assoc?.idAssociacao || 0;
+
   const { data: campeonatos = [], isLoading, isError, refetch } = useQuery<Campeonato[]>({
     queryKey: ['campeonatos', idAssociacao],
-    queryFn: () => fetchCampeonatosPorAssociacao(idAssociacao)
+    queryFn: () => fetchCampeonatosPorAssociacao(idAssociacao),
+    enabled: !!idAssociacao,
   });
 
   const [detalhes, setDetalhes] = useState<Record<number, { associacaoNome?: string; bairro?: string; cidade?: string; estado?: string }>>({});
+
+  useEffect(() => {
+    setDetalhes({});
+  }, [idAssociacao]);
 
   useEffect(() => {
     if (!campeonatos.length) return;
@@ -246,7 +254,7 @@ const Campeonatos = () => {
                 <DialogTitle>Criar Campeonato</DialogTitle>
               </DialogHeader>
               <CampeonatoForm
-                idAssociacao={idAssociacao}
+                idAssociacao={getStoredAssociacao()?.idAssociacao || 0}
                 onSuccess={handleCloseForm}
                 onCancel={handleCloseForm}
               />

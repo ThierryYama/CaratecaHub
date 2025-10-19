@@ -1,20 +1,26 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../middleware/auth';
 import prisma from '../lib/prisma';
 
-export const listarCampeonatos = async (req: Request, res: Response) => {
+export const listarCampeonatos = async (req: AuthRequest, res: Response) => {
     try {
-        const campeonatos = await prisma.campeonato.findMany({ orderBy: { idCampeonato: 'asc' } });
+        const idAssociacao = req.user!.idAssociacao;
+        const campeonatos = await prisma.campeonato.findMany({ where: { idAssociacao }, orderBy: { idCampeonato: 'asc' } });
         res.status(200).json(campeonatos);
     } catch (err) {
         res.status(500).json({ message: 'Erro ao listar campeonatos', error: String(err) });
     }
 };
 
-export const listarCampeonatoPorIdDeAssociacao = async (req: Request, res: Response) => {
+export const listarCampeonatoPorIdDeAssociacao = async (req: AuthRequest, res: Response) => {
     try {
-        const id = Number(req.params.id);
+        const tokenAssociacao = req.user!.idAssociacao;
+        const paramId = Number(req.params.id);
+        if (!Number.isNaN(paramId) && paramId !== tokenAssociacao) {
+            return res.status(403).json({ message: 'Acesso negado: associação inválida.' });
+        }
         const campeonatos = await prisma.campeonato.findMany({
-            where: { idAssociacao: id },
+            where: { idAssociacao: tokenAssociacao },
             orderBy: { idCampeonato: 'asc' }
         });
         res.status(200).json(campeonatos);
@@ -23,11 +29,12 @@ export const listarCampeonatoPorIdDeAssociacao = async (req: Request, res: Respo
     }
 };
 
-export const listarCampeonatoPorId = async (req: Request, res: Response) => {
+export const listarCampeonatoPorId = async (req: AuthRequest, res: Response) => {
     try {
         const id = Number(req.params.id);
-        const campeonato = await prisma.campeonato.findUnique({
-            where: { idCampeonato: id },
+        const idAssociacao = req.user!.idAssociacao;
+        const campeonato = await prisma.campeonato.findFirst({
+            where: { idCampeonato: id, idAssociacao },
             include: {
                 associacao: true,
                 endereco: true,
@@ -47,13 +54,10 @@ export const listarCampeonatoPorId = async (req: Request, res: Response) => {
     }
 };
 
-export const cadastrarCampeonato = async (req: Request, res: Response) => {
+export const cadastrarCampeonato = async (req: AuthRequest, res: Response) => {
     try {
-        const { endereco, idEndereco, dataInicio, idAssociacao, ...campeonatoData } = req.body;
-
-        if (!idAssociacao) {
-            return res.status(400).json({ message: 'O campo idAssociacao é obrigatório.' });
-        }
+    const { endereco, idEndereco, dataInicio, dataFim, idAssociacao: _, ...campeonatoData } = req.body;
+        const idAssociacao = req.user!.idAssociacao;
 
         if (!endereco && !idEndereco) {
             return res.status(400).json({ message: 'Você deve fornecer um objeto "endereco" para criar um novo ou um "idEndereco" para vincular a um existente.' });
@@ -73,9 +77,19 @@ export const cadastrarCampeonato = async (req: Request, res: Response) => {
             }
         };
 
+        if (dataFim) {
+            dataCreate.dataFim = new Date(dataFim);
+        }
+
         if (endereco) {
+            const { idAssociacao: _endId, ...enderecoData } = endereco;
             dataCreate.endereco = {
-                create: endereco
+                create: {
+                    ...enderecoData,
+                    associacao: {
+                        connect: { idAssociacao: Number(idAssociacao) }
+                    }
+                }
             };
         } else if (idEndereco) {
             dataCreate.endereco = {
@@ -93,6 +107,7 @@ export const cadastrarCampeonato = async (req: Request, res: Response) => {
         res.status(201).json(campeonato);
 
     } catch (err: any) {
+        console.error('Erro ao criar campeonato:', err);
         if (err.code === 'P2025') {
             return res.status(404).json({ message: `Associação ou Endereço com o ID informado não foi encontrado.`, error: String(err) });
         }
@@ -100,30 +115,36 @@ export const cadastrarCampeonato = async (req: Request, res: Response) => {
     }
 };
 
-export const atualizarCampeonato = async (req: Request, res: Response) => {
+export const atualizarCampeonato = async (req: AuthRequest, res: Response) => {
     try {
         const id = Number(req.params.id);
-        const data = req.body;
-        const campeonato = await prisma.campeonato.update({ where: { idCampeonato: id }, data });
+        const idAssociacao = req.user!.idAssociacao;
+        const data: any = { ...req.body };
+        delete data.idAssociacao;
+        const result = await prisma.campeonato.updateMany({ where: { idCampeonato: id, idAssociacao }, data });
+        if (result.count === 0) return res.status(404).json({ message: 'Campeonato não encontrado' });
+        const campeonato = await prisma.campeonato.findFirst({ where: { idCampeonato: id, idAssociacao } });
         res.status(200).json(campeonato);
     } catch (err) {
         res.status(400).json({ message: 'Erro ao atualizar campeonato', error: String(err) });
     }
 };
 
-export const deletarCampeonato = async (req: Request, res: Response) => {
+export const deletarCampeonato = async (req: AuthRequest, res: Response) => {
     try {
         const id = Number(req.params.id);
-        await prisma.campeonato.delete({ where: { idCampeonato: id } });
+        const idAssociacao = req.user!.idAssociacao;
+        const result = await prisma.campeonato.deleteMany({ where: { idCampeonato: id, idAssociacao } });
+        if (result.count === 0) return res.status(404).json({ message: 'Campeonato não encontrado' });
         res.status(204).send();
     } catch (err) {
         res.status(400).json({ message: 'Erro ao remover campeonato', error: String(err) });
     }
 };
 
-export const adicionarCategoriaAoCampeonato = async (req: Request, res: Response) => {
+export const adicionarCategoriaAoCampeonato = async (req: AuthRequest, res: Response) => {
     try {
-        const idCampeonato = Number(req.params.idCampeonato);
+    const idCampeonato = Number(req.params.idCampeonato);
         const { idCategoria } = req.body as { idCategoria?: number };
 
         if (!idCategoria) {
@@ -157,12 +178,12 @@ export const adicionarCategoriaAoCampeonato = async (req: Request, res: Response
     }
 };
 
-export const removerCategoriaDeCampeonato = async (req: Request, res: Response) => {
+export const removerCategoriaDeCampeonato = async (req: AuthRequest, res: Response) => {
     try {
-        const idCampeonato = Number(req.params.idCampeonato);
-        const idCategoria = Number(req.params.idCategoria);
+    const idCampeonato = Number(req.params.idCampeonato);
+    const idCategoria = Number(req.params.idCategoria);
 
-        if (isNaN(idCampeonato) || isNaN(idCategoria)) {
+        if (Number.isNaN(idCampeonato) || Number.isNaN(idCategoria)) {
             return res.status(400).json({ message: 'Parâmetros inválidos' });
         }
 
@@ -186,10 +207,10 @@ export const removerCategoriaDeCampeonato = async (req: Request, res: Response) 
     }
 };
 
-export const listarCategoriasDeCampeonato = async (req: Request, res: Response) => {
+export const listarCategoriasDeCampeonato = async (req: AuthRequest, res: Response) => {
     try {
         const idCampeonato = Number(req.params.idCampeonato);
-        if (isNaN(idCampeonato)) {
+        if (Number.isNaN(idCampeonato)) {
             return res.status(400).json({ message: 'Parâmetro idCampeonato inválido' });
         }
 
@@ -208,14 +229,14 @@ export const listarCategoriasDeCampeonato = async (req: Request, res: Response) 
     }
 };
 
-export const atualizarEnderecoCampeonato = async (req: Request, res: Response) => {
+export const atualizarEnderecoCampeonato = async (req: AuthRequest, res: Response) => {
     try {
         const idCampeonato = Number(req.params.idCampeonato);
-        if (isNaN(idCampeonato)) {
+        if (Number.isNaN(idCampeonato)) {
             return res.status(400).json({ message: 'Parâmetro idCampeonato inválido' });
         }
 
-        const campos = req.body;
+    const campos = req.body;
         if (!campos || Object.keys(campos).length === 0) {
             return res.status(400).json({ message: 'Informe campos para atualização do endereço' });
         }
@@ -236,9 +257,9 @@ export const atualizarEnderecoCampeonato = async (req: Request, res: Response) =
     }
 };
 
-export const confirmarCategorias = async (req: Request, res: Response) => {
+export const confirmarCategorias = async (req: AuthRequest, res: Response) => {
     try {
-        const idCampeonato = Number(req.params.idCampeonato);
+    const idCampeonato = Number(req.params.idCampeonato);
         const camp = await prisma.campeonato.findUnique({ where: { idCampeonato }, include: { modalidades: true } });
         if (!camp) return res.status(404).json({ message: 'Campeonato não encontrado' });
         if (camp.categoriasConfirmadas) return res.status(409).json({ message: 'Etapa já confirmada' });
@@ -252,7 +273,7 @@ export const confirmarCategorias = async (req: Request, res: Response) => {
     }
 };
 
-export const confirmarInscricoes = async (req: Request, res: Response) => {
+export const confirmarInscricoes = async (req: AuthRequest, res: Response) => {
     try {
         const idCampeonato = Number(req.params.idCampeonato);
         const camp = await prisma.campeonato.findUnique({ where: { idCampeonato } });
@@ -273,7 +294,7 @@ export const confirmarInscricoes = async (req: Request, res: Response) => {
     }
 };
 
-export const VerificarEtapasDoCampeonato = async (req: Request, res: Response) => {
+export const VerificarEtapasDoCampeonato = async (req: AuthRequest, res: Response) => {
     try {
         const idCampeonato = Number(req.params.idCampeonato);
         const camp = await prisma.campeonato.findUnique({ where: { idCampeonato } });

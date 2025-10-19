@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { logout } from '@/services/api';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,8 +20,8 @@ interface HeaderProps {
 const Header = ({ onToggleSidebar, onNovoCampeonato }: HeaderProps) => {
   const navigate = useNavigate();
   const handleLogout = () => {
-    // Implementar lógica de logout aqui
-    console.log('Logout realizado');
+    logout();
+    navigate('/login');
   };
 
   return (
