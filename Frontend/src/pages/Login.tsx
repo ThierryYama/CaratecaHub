@@ -43,7 +43,7 @@ const Login = () => {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <img src="/logo.png" alt="CaratecaHub Logo" className="h-24 w-auto" />
+            <img src="/logo.png" alt="CaratecaHub Logo" className="h-50 w-40" />
           </div>
           <CardTitle className="text-2xl font-bold text-red-600">Bem-vindo ao CaratecaHub</CardTitle>
           <CardDescription>Entre com suas credenciais para acessar o sistema</CardDescription>
