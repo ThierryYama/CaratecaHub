@@ -40,6 +40,7 @@ export interface Atleta {
   graduacao: string;
   peso: number;
   idAssociacao: number;
+  associacao?: Associacao;
   status: boolean;
   telefone: string;
   email: string;
@@ -50,6 +51,7 @@ export interface Equipe {
   nome: string;
   descricao?: string | null;
   idAssociacao: number;
+  associacao?: Associacao;
   genero: Genero;
   membros: {
     atleta: Atleta;
@@ -207,6 +209,7 @@ export interface Campeonato {
   idAssociacao: number;
   idEndereco?: number;
   endereco: Endereco;
+  associacao?: Associacao;
   nome: string;
   dataInicio: string;
   dataFim?: string | null;
@@ -241,6 +244,16 @@ export const fetchCampeonatosPorAssociacao = async (_idAssociacao: number): Prom
 export const fetchCampeonatoById = async (id: number): Promise<Campeonato> => {
     const response = await api.get(`/listarCampeonato/${id}`);
     return response.data;
+};
+
+export const fetchCampeonatosPublicos = async (): Promise<CampeonatoDetalhado[]> => {
+  const response = await api.get('/listarCampeonatosPublicos');
+  return response.data;
+};
+
+export const fetchCampeonatoPublicoById = async (id: number): Promise<CampeonatoDetalhado> => {
+  const response = await api.get(`/listarCampeonatoPublico/${id}`);
+  return response.data;
 };
 
 export const createCampeonato = async (campeonato: CampeonatoInput): Promise<Campeonato> => {
