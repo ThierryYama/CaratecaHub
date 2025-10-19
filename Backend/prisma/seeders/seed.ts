@@ -1,4 +1,5 @@
 import { PrismaClient } from '../../src/generated/prisma';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -26,7 +27,7 @@ async function run() {
       endereco: 'Rua A, 123',
       telefone: '(11) 99999-0001',
       email: 'contato@dragao.com',
-      senha: 'senha123',
+      senha: await bcrypt.hash('senha123', 10),
       sigla: 'AD',
     },
   });
@@ -38,7 +39,7 @@ async function run() {
       endereco: 'Av. B, 456',
       telefone: '(21) 98888-0002',
       email: 'contato@tigre.com',
-      senha: 'senha123',
+      senha: await bcrypt.hash('senha123', 10),
       sigla: 'AT',
     },
   });
