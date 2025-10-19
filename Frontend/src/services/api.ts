@@ -560,4 +560,52 @@ export const getStoredAssociacao = (): Associacao | null => {
   return stored ? JSON.parse(stored) : null;
 };
 
+export interface PerfilData {
+  idAssociacao: number;
+  nome: string;
+  cnpj: string;
+  telefone: string;
+  email: string;
+  sigla?: string | null;
+  createdAt: string;
+  endereco?: Endereco | null;
+}
+
+export interface UpdatePerfilInput {
+  nome: string;
+  telefone: string;
+  email: string;
+  sigla?: string;
+  senha?: string;
+  endereco?: {
+    rua: string;
+    numero: string;
+    complemento?: string;
+    bairro: string;
+    cidade: string;
+    estado: string;
+    cep: string;
+  };
+}
+
+export const fetchPerfil = async (): Promise<PerfilData> => {
+  const response = await api.get('/perfil');
+  return response.data;
+};
+
+export const updatePerfil = async (data: UpdatePerfilInput): Promise<PerfilData> => {
+  const response = await api.put('/perfil', data);
+  const stored = getStoredAssociacao();
+  if (stored) {
+    const updated = { ...stored, nome: response.data.nome, email: response.data.email, sigla: response.data.sigla };
+    localStorage.setItem('associacao', JSON.stringify(updated));
+  }
+  return response.data;
+};
+
+export const deletePerfil = async (): Promise<void> => {
+  await api.delete('/perfil');
+  logout();
+};
+
 export default api
