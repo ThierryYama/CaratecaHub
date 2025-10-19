@@ -12,6 +12,26 @@ export const listarCampeonatos = async (req: AuthRequest, res: Response) => {
     }
 };
 
+export const listarCampeonatosPublicos = async (req: AuthRequest, res: Response) => {
+    try {
+        const idAssociacao = req.user!.idAssociacao;
+        const campeonatos = await prisma.campeonato.findMany({
+            where: { idAssociacao: { not: idAssociacao } },
+            orderBy: { idCampeonato: 'asc' },
+            include: {
+                associacao: true,
+                endereco: true,
+                modalidades: {
+                    include: { categoria: true }
+                }
+            }
+        });
+        res.status(200).json(campeonatos);
+    } catch (err) {
+        res.status(500).json({ message: 'Erro ao listar campeonatos públicos', error: String(err) });
+    }
+};
+
 export const listarCampeonatoPorIdDeAssociacao = async (req: AuthRequest, res: Response) => {
     try {
         const tokenAssociacao = req.user!.idAssociacao;
@@ -51,6 +71,30 @@ export const listarCampeonatoPorId = async (req: AuthRequest, res: Response) => 
         res.status(200).json(campeonato);
     } catch (err) {
         res.status(500).json({ message: 'Erro ao buscar campeonato', error: String(err) });
+    }
+};
+
+export const listarCampeonatoPublicoPorId = async (req: AuthRequest, res: Response) => {
+    try {
+        const id = Number(req.params.id);
+        const campeonato = await prisma.campeonato.findFirst({
+            where: { idCampeonato: id },
+            include: {
+                associacao: true,
+                endereco: true,
+                modalidades: {
+                    include: {
+                        categoria: true
+                    }
+                }
+            }
+        });
+        if (!campeonato) {
+            return res.status(404).json({ message: 'Campeonato não encontrado' });
+        }
+        res.status(200).json(campeonato);
+    } catch (err) {
+        res.status(500).json({ message: 'Erro ao buscar campeonato público', error: String(err) });
     }
 };
 

@@ -27,7 +27,7 @@ import {
   fetchEtapas,
   confirmarInscricoes,
 } from '@/services/api';
-import { AlertCircle, CheckCircle2, Users, UserRound, ChevronsUpDown, Check } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Users, UserRound, ChevronsUpDown, Check, Building2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
@@ -314,22 +314,34 @@ const Inscricoes: React.FC = () => {
           <div className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-3 mb-3">Selecione uma categoria de equipe para inscrever equipes.</div>
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredList.map((item: any) => (
-            <div key={(item.idAtleta ?? item.idEquipe)} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-3 gap-3 flex-wrap">
-                <div className="flex-1 max-w-full">
-                  <h3 className="font-semibold text-gray-900 whitespace-normal break-words leading-tight max-w-full overflow-visible" title={item.nome}>{item.nome}</h3>
-                  {item.genero && (
-                    <Badge className={getGeneroBadgeClass(item.genero)}>
-                      {item.genero}
-                    </Badge>
-                  )}
-                </div>
-                <div className="shrink-0 w-full sm:w-auto">
-                  <Button
-                    disabled={selectedModalidadeId == null || !canInscrever(tab === 'atletas')}
-                    onClick={() => {
-                      if (selectedModalidadeId == null) return;
+          {filteredList.map((item: any) => {
+            const assoc = item.associacao;
+            const nomeAssociacao = assoc ? (assoc.nome || assoc.sigla || assoc.cnpj || `Assoc. #${item.idAssociacao}`) : null;
+            
+            return (
+              <div key={(item.idAtleta ?? item.idEquipe)} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-3 gap-3 flex-wrap">
+                  <div className="flex-1 max-w-full">
+                    <h3 className="font-semibold text-gray-900 whitespace-normal break-words leading-tight max-w-full overflow-visible" title={item.nome}>{item.nome}</h3>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {item.genero && (
+                        <Badge className={getGeneroBadgeClass(item.genero)}>
+                          {item.genero}
+                        </Badge>
+                      )}
+                      {nomeAssociacao && (
+                        <Badge variant="outline" className="text-xs">
+                          <Building2 className="w-3 h-3 mr-1" />
+                          {nomeAssociacao}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0 w-full sm:w-auto">
+                    <Button
+                      disabled={selectedModalidadeId == null || !canInscrever(tab === 'atletas')}
+                      onClick={() => {
+                        if (selectedModalidadeId == null) return;
                       const modId = Number(selectedModalidadeId);
                       if (tab === 'atletas') {
                         const existing = (inscricoesAtletas ?? []).find(i => i.idAtleta === item.idAtleta);
@@ -368,7 +380,8 @@ const Inscricoes: React.FC = () => {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>
@@ -387,40 +400,57 @@ const Inscricoes: React.FC = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>{tab === 'atletas' ? 'Atleta' : 'Equipe'}</TableHead>
+                <TableHead>Associação</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(tab === 'atletas' ? (inscricoesAtletas ?? []).filter(i => i.status === StatusInscricao.INSCRITO) : (inscricoesEquipes ?? []).filter(i => i.status === StatusInscricao.INSCRITO)).map((insc: any) => (
-                <TableRow key={(insc.idInscricaoAtleta ?? insc.idInscricaoEquipe)}>
-                  <TableCell className="font-medium">{tab === 'atletas' ? insc.atleta?.nome : insc.equipe?.nome}</TableCell>
-                  <TableCell>
-                    {insc.status === StatusInscricao.INSCRITO ? (
-                      <Badge className="bg-green-100 text-green-800">INSCRITO</Badge>
-                    ) : (
-                      <Badge className="bg-yellow-100 text-yellow-800">AGUARDANDO</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <Button
-                        variant="outline"
-                        className="text-red-600 hover:text-red-700 border-red-600"
-                        onClick={() => {
-                          if (tab === 'atletas') {
-                            desvincularInscricaoAtleta.mutate(insc.idInscricaoAtleta);
-                          } else {
-                            desvincularInscricaoEquipe.mutate(insc.idInscricaoEquipe);
-                          }
-                        }}
-                      >
-                        Remover
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {(tab === 'atletas' ? (inscricoesAtletas ?? []).filter(i => i.status === StatusInscricao.INSCRITO) : (inscricoesEquipes ?? []).filter(i => i.status === StatusInscricao.INSCRITO)).map((insc: any) => {
+                const participante = tab === 'atletas' ? insc.atleta : insc.equipe;
+                const assoc = participante?.associacao;
+                const nomeAssociacao = assoc ? (assoc.nome || assoc.sigla || assoc.cnpj || `Assoc. #${participante.idAssociacao}`) : '-';
+                
+                return (
+                  <TableRow key={(insc.idInscricaoAtleta ?? insc.idInscricaoEquipe)}>
+                    <TableCell className="font-medium">{participante?.nome}</TableCell>
+                    <TableCell>
+                      {assoc ? (
+                        <Badge variant="outline" className="text-xs">
+                          <Building2 className="w-3 h-3 mr-1" />
+                          {nomeAssociacao}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">{nomeAssociacao}</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {insc.status === StatusInscricao.INSCRITO ? (
+                        <Badge className="bg-green-100 text-green-800">INSCRITO</Badge>
+                      ) : (
+                        <Badge className="bg-yellow-100 text-yellow-800">AGUARDANDO</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <Button
+                          variant="outline"
+                          className="text-red-600 hover:text-red-700 border-red-600"
+                          onClick={() => {
+                            if (tab === 'atletas') {
+                              desvincularInscricaoAtleta.mutate(insc.idInscricaoAtleta);
+                            } else {
+                              desvincularInscricaoEquipe.mutate(insc.idInscricaoEquipe);
+                            }
+                          }}
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}

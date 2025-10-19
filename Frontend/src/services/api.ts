@@ -40,6 +40,7 @@ export interface Atleta {
   graduacao: string;
   peso: number;
   idAssociacao: number;
+  associacao?: Associacao;
   status: boolean;
   telefone: string;
   email: string;
@@ -50,6 +51,7 @@ export interface Equipe {
   nome: string;
   descricao?: string | null;
   idAssociacao: number;
+  associacao?: Associacao;
   genero: Genero;
   membros: {
     atleta: Atleta;
@@ -207,6 +209,7 @@ export interface Campeonato {
   idAssociacao: number;
   idEndereco?: number;
   endereco: Endereco;
+  associacao?: Associacao;
   nome: string;
   dataInicio: string;
   dataFim?: string | null;
@@ -241,6 +244,16 @@ export const fetchCampeonatosPorAssociacao = async (_idAssociacao: number): Prom
 export const fetchCampeonatoById = async (id: number): Promise<Campeonato> => {
     const response = await api.get(`/listarCampeonato/${id}`);
     return response.data;
+};
+
+export const fetchCampeonatosPublicos = async (): Promise<CampeonatoDetalhado[]> => {
+  const response = await api.get('/listarCampeonatosPublicos');
+  return response.data;
+};
+
+export const fetchCampeonatoPublicoById = async (id: number): Promise<CampeonatoDetalhado> => {
+  const response = await api.get(`/listarCampeonatoPublico/${id}`);
+  return response.data;
 };
 
 export const createCampeonato = async (campeonato: CampeonatoInput): Promise<Campeonato> => {
@@ -558,6 +571,54 @@ export const logout = () => {
 export const getStoredAssociacao = (): Associacao | null => {
   const stored = localStorage.getItem('associacao');
   return stored ? JSON.parse(stored) : null;
+};
+
+export interface PerfilData {
+  idAssociacao: number;
+  nome: string;
+  cnpj: string;
+  telefone: string;
+  email: string;
+  sigla?: string | null;
+  createdAt: string;
+  endereco?: Endereco | null;
+}
+
+export interface UpdatePerfilInput {
+  nome: string;
+  telefone: string;
+  email: string;
+  sigla?: string;
+  senha?: string;
+  endereco?: {
+    rua: string;
+    numero: string;
+    complemento?: string;
+    bairro: string;
+    cidade: string;
+    estado: string;
+    cep: string;
+  };
+}
+
+export const fetchPerfil = async (): Promise<PerfilData> => {
+  const response = await api.get('/perfil');
+  return response.data;
+};
+
+export const updatePerfil = async (data: UpdatePerfilInput): Promise<PerfilData> => {
+  const response = await api.put('/perfil', data);
+  const stored = getStoredAssociacao();
+  if (stored) {
+    const updated = { ...stored, nome: response.data.nome, email: response.data.email, sigla: response.data.sigla };
+    localStorage.setItem('associacao', JSON.stringify(updated));
+  }
+  return response.data;
+};
+
+export const deletePerfil = async (): Promise<void> => {
+  await api.delete('/perfil');
+  logout();
 };
 
 export default api

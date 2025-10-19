@@ -105,6 +105,9 @@ const createAtletaParticipant = (
   return {
     idInscricao: inscricao.idInscricaoAtleta,
     nome: inscricao.atleta.nome,
+    associacao: inscricao.atleta.associacao 
+      ? (inscricao.atleta.associacao.nome || inscricao.atleta.associacao.sigla)
+      : undefined,
     detalhe: undefined,
     isBye: false,
   };
@@ -126,6 +129,9 @@ const createEquipeParticipant = (
   return {
     idInscricao: inscricao.idInscricaoEquipe,
     nome: inscricao.equipe.nome,
+    associacao: inscricao.equipe.associacao 
+      ? (inscricao.equipe.associacao.nome || inscricao.equipe.associacao.sigla)
+      : undefined,
     detalhe: undefined,
     isBye: false,
   };

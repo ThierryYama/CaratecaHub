@@ -69,6 +69,10 @@ const Header = ({ onToggleSidebar, onNovoCampeonato }: HeaderProps) => {
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={() => navigate('/perfil')} className="cursor-pointer">
+              <User className="w-4 h-4 mr-2" />
+              Perfil
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
               <LogOut className="w-4 h-4 mr-2" />
               Logout
