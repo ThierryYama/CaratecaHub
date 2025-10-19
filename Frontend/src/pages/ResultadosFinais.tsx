@@ -119,14 +119,18 @@ const extrairResultados = (
     if (inscricaoVencedor?.atleta) {
       campeao = {
         nome: inscricaoVencedor.atleta.nome,
-        associacao: 'Associação', // TODO: Buscar nome da associação pelo idAssociacao
+        associacao: inscricaoVencedor.atleta.associacao 
+          ? (inscricaoVencedor.atleta.associacao.nome || inscricaoVencedor.atleta.associacao.sigla)
+          : undefined,
       };
     }
     
     if (inscricaoPerdedor?.atleta) {
       vice = {
         nome: inscricaoPerdedor.atleta.nome,
-        associacao: 'Associação', // TODO: Buscar nome da associação pelo idAssociacao
+        associacao: inscricaoPerdedor.atleta.associacao 
+          ? (inscricaoPerdedor.atleta.associacao.nome || inscricaoPerdedor.atleta.associacao.sigla)
+          : undefined,
       };
     }
   } else {
@@ -137,14 +141,18 @@ const extrairResultados = (
     if (inscricaoVencedor?.equipe) {
       campeao = {
         nome: inscricaoVencedor.equipe.nome,
-        associacao: 'Associação', // TODO: Buscar nome da associação pelo idAssociacao
+        associacao: inscricaoVencedor.equipe.associacao 
+          ? (inscricaoVencedor.equipe.associacao.nome || inscricaoVencedor.equipe.associacao.sigla)
+          : undefined,
       };
     }
     
     if (inscricaoPerdedor?.equipe) {
       vice = {
         nome: inscricaoPerdedor.equipe.nome,
-        associacao: 'Associação', // TODO: Buscar nome da associação pelo idAssociacao
+        associacao: inscricaoPerdedor.equipe.associacao 
+          ? (inscricaoPerdedor.equipe.associacao.nome || inscricaoPerdedor.equipe.associacao.sigla)
+          : undefined,
       };
     }
   }
@@ -163,7 +171,9 @@ const extrairResultados = (
         if (inscricaoPerdedor?.atleta) {
           terceiros.push({
             nome: inscricaoPerdedor.atleta.nome,
-            associacao: 'Associação', // TODO: Buscar nome da associação pelo idAssociacao
+            associacao: inscricaoPerdedor.atleta.associacao 
+              ? (inscricaoPerdedor.atleta.associacao.nome || inscricaoPerdedor.atleta.associacao.sigla)
+              : undefined,
           });
         }
       } else {
@@ -173,7 +183,9 @@ const extrairResultados = (
         if (inscricaoPerdedor?.equipe) {
           terceiros.push({
             nome: inscricaoPerdedor.equipe.nome,
-            associacao: 'Associação', // TODO: Buscar nome da associação pelo idAssociacao
+            associacao: inscricaoPerdedor.equipe.associacao 
+              ? (inscricaoPerdedor.equipe.associacao.nome || inscricaoPerdedor.equipe.associacao.sigla)
+              : undefined,
           });
         }
       }
