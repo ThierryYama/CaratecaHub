@@ -57,7 +57,11 @@ export const listarInscricoesAtletaPorCampeonato = async (req: Request, res: Res
       where: { idCampeonatoModalidade },
       orderBy: { idInscricaoAtleta: 'asc' },
       include: {
-        atleta: true,
+        atleta: {
+          include: {
+            associacao: true,
+          },
+        },
         campeonatoModalidade: { include: { categoria: true, campeonato: true } },
       },
     });
@@ -180,7 +184,11 @@ export const listarInscricoesEquipePorCampeonato = async (req: Request, res: Res
       where: { idCampeonatoModalidade },
       orderBy: { idInscricaoEquipe: 'asc' },
       include: {
-        equipe: true,
+        equipe: {
+          include: {
+            associacao: true,
+          },
+        },
         campeonatoModalidade: { include: { categoria: true, campeonato: true } },
       },
     });

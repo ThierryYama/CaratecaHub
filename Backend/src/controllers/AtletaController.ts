@@ -5,7 +5,13 @@ import prisma from '../lib/prisma';
 export const listarAtletas = async (req: AuthRequest, res: Response) => {
     try {
         const idAssociacao = req.user!.idAssociacao;
-        const atletas = await prisma.atleta.findMany({ where: { idAssociacao }, orderBy: { idAtleta: 'asc' } });
+        const atletas = await prisma.atleta.findMany({ 
+            where: { idAssociacao }, 
+            orderBy: { idAtleta: 'asc' },
+            include: {
+                associacao: true,
+            },
+        });
         res.status(200).json(atletas);
     } catch (err) {
         res.status(500).json({ message: 'Erro ao listar atletas', error: String(err) });

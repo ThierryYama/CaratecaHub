@@ -65,6 +65,7 @@ export const listarTodasEquipes = async (req: AuthRequest, res: Response) => {
     const equipes = await prisma.equipe.findMany({
       where: { idAssociacao },
       include: {
+        associacao: true,
         membros: {
           include: {
             atleta: true,

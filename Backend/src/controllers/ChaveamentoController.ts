@@ -303,8 +303,26 @@ export default {
 			const partidas = await prisma.partidaAtleta.findMany({
 				where: { idCampeonatoModalidade },
 				include: {
-					inscricaoAtleta1: { include: { atleta: true, campeonatoModalidade: true } },
-					inscricaoAtleta2: { include: { atleta: true, campeonatoModalidade: true } },
+					inscricaoAtleta1: { 
+						include: { 
+							atleta: {
+								include: {
+									associacao: true,
+								},
+							},
+							campeonatoModalidade: true,
+						},
+					},
+					inscricaoAtleta2: { 
+						include: { 
+							atleta: {
+								include: {
+									associacao: true,
+								},
+							},
+							campeonatoModalidade: true,
+						},
+					},
 				},
 				orderBy: [{ round: 'asc' }, { position: 'asc' }],
 			});
@@ -321,8 +339,26 @@ export default {
 			const partidas = await prisma.partidaEquipe.findMany({
 				where: { idCampeonatoModalidade },
 				include: {
-					inscricaoEquipe1: { include: { equipe: true, campeonatoModalidade: true } },
-					inscricaoEquipe2: { include: { equipe: true, campeonatoModalidade: true } },
+					inscricaoEquipe1: { 
+						include: { 
+							equipe: {
+								include: {
+									associacao: true,
+								},
+							},
+							campeonatoModalidade: true,
+						},
+					},
+					inscricaoEquipe2: { 
+						include: { 
+							equipe: {
+								include: {
+									associacao: true,
+								},
+							},
+							campeonatoModalidade: true,
+						},
+					},
 				},
 				orderBy: [{ round: 'asc' }, { position: 'asc' }],
 			});
