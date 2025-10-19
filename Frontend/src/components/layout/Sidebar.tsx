@@ -1,6 +1,5 @@
 import React, { useMemo, useLayoutEffect, useState } from 'react';
 import { 
-  LayoutDashboard, 
   Users, 
   CalendarDays, 
   List,
@@ -14,6 +13,8 @@ import {
   ChevronsRight,
   XCircle,
   GitBranch,
+  Globe,
+  Tags,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -39,10 +40,9 @@ interface MenuItemBase {
 }
 
 const baseItems: MenuItemBase[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-  { id: 'campeonatos', label: 'Campeonatos', icon: CalendarDays, path: '/campeonatos' },
-  { id: 'campeonatos-publicos', label: 'Campeonatos Públicos', icon: CalendarDays, path: '/campeonatos-publicos' },
-  { id: 'categorias', label: 'Categorias', icon: List, path: '/categorias' },
+  { id: 'campeonatos', label: 'Meus Campeonatos', icon: CalendarDays, path: '/campeonatos' },
+  { id: 'campeonatos-publicos', label: 'Campeonatos Públicos', icon: Globe, path: '/campeonatos-publicos' },
+  { id: 'categorias', label: 'Categorias', icon: Tags, path: '/categorias' },
   { id: 'atletas', label: 'Atletas', icon: UserRound, path: '/atletas' },
   { id: 'equipes', label: 'Equipes', icon: Users, path: '/equipes' },
 ];
@@ -100,11 +100,10 @@ const SidebarComponent = ({ onItemClick }: SidebarProps) => {
       ]
     };
     return [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-      { id: 'campeonatos', label: 'Campeonatos', icon: CalendarDays, path: '/campeonatos' },
-      { id: 'campeonatos-publicos', label: 'Campeonatos Públicos', icon: CalendarDays, path: '/campeonatos-publicos' },
+      { id: 'campeonatos', label: 'Meus Campeonatos', icon: CalendarDays, path: '/campeonatos' },
+      { id: 'campeonatos-publicos', label: 'Campeonatos Públicos', icon: Globe, path: '/campeonatos-publicos' },
       contexto,
-      { id: 'categorias', label: 'Categorias', icon: List, path: '/categorias' },
+      { id: 'categorias', label: 'Categorias', icon: Tags, path: '/categorias' },
       { id: 'atletas', label: 'Atletas', icon: UserRound, path: '/atletas' },
       { id: 'equipes', label: 'Equipes', icon: Users, path: '/equipes' },
     ];
