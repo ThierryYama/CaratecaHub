@@ -1,13 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import {
-  Trophy,
-  History,
-  Filter,
-  Eye,
-  GitBranch,
-  Loader2,
-  Crown,
-} from 'lucide-react';
+import { Trophy, History, Filter, Eye, GitBranch, Loader2, Crown } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Header from '@/components/layout/Header';
@@ -287,12 +279,6 @@ const HistoricoBrackets: React.FC = () => {
     return normalizeMatches(bracketsData, type);
   }, [bracketsData, selectedCategoria]);
 
-  const chaveamentosGerados = useMemo(() => {
-    // Conta apenas se a categoria selecionada tem chaveamento gerado
-    if (!normalizedBracket || !normalizedBracket.rounds.length) return 0;
-    return 1;
-  }, [normalizedBracket]);
-
   const handleViewBracket = useCallback(() => {
     if (!normalizedBracket) {
       toast({
@@ -333,7 +319,7 @@ const HistoricoBrackets: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Histórico de Chaveamentos</h1>
             <p className="text-gray-600 max-w-2xl">
-              Visualize o histórico completo dos chaveamentos gerados para cada categoria do campeonato, 
+              Visualize o histórico completo dos chaveamentos para cada categoria do campeonato, 
               incluindo todos os confrontos e resultados finais.
             </p>
           </div>
@@ -347,19 +333,6 @@ const HistoricoBrackets: React.FC = () => {
                 <div>
                   <p className="text-xs uppercase tracking-wide text-gray-500">Total de Categorias</p>
                   <p className="text-2xl font-semibold text-gray-900">{categorias.length}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-green-100 text-green-600">
-                  <Trophy className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Chaveamentos Gerados</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {selectedModalidade ? chaveamentosGerados : '-'}
-                  </p>
                 </div>
               </CardContent>
             </Card>
