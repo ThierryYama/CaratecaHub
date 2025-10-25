@@ -115,9 +115,42 @@ function toPairs<T>(ordered: T[]): Array<[T | null, T | null]> {
 
 function pairWithAssociationSeparation<T extends { associacaoId?: number }>(items: T[]): Array<[T | null, T | null]> {
 	if (items.length === 0) return [];
+	
+	// Calcula a próxima potência de 2
+	const nextPowerOf2 = Math.pow(2, Math.ceil(Math.log2(items.length)));
+	const byesNeeded = nextPowerOf2 - items.length;
+	
 	const heap = createAssociationBuckets(items);
 	const ordered = distributeParticipants(heap);
-	return toPairs(ordered);
+	
+	// Se não precisa de BYEs, apenas retorna os pares
+	if (byesNeeded === 0) {
+		return toPairs(ordered);
+	}
+	
+	// Distribui os BYEs de forma intercalada (padrão de torneio)
+	// BYEs são inseridos nas posições estratégicas para balancear a chave
+	const withByes: (T | null)[] = [];
+	const step = Math.floor(ordered.length / byesNeeded) || 1;
+	
+	let byeIndex = 0;
+	let playerIndex = 0;
+	
+	for (let i = 0; i < nextPowerOf2; i++) {
+		// Intercala: a cada 'step' jogadores, adiciona um BYE
+		if (byeIndex < byesNeeded && i % (step + 1) === step) {
+			withByes.push(null);
+			byeIndex++;
+		} else if (playerIndex < ordered.length) {
+			const player = ordered[playerIndex];
+			withByes.push(player !== undefined ? player : null);
+			playerIndex++;
+		} else {
+			withByes.push(null);
+		}
+	}
+	
+	return toPairs(withByes);
 }
 
 function countRoundsFromMatches(matchCount: number): number {
@@ -149,35 +182,13 @@ interface BracketOps {
 }
 
 async function propagateByes(idCampeonatoModalidade: number, ops: BracketOps, lastRound: number) {
-	for (let round = 2; round <= lastRound; round++) {
-		const currentRoundMatches = await (ops as any).findMany({
-			where: { idCampeonatoModalidade, round }
-		});
-
-		for (const match of currentRoundMatches) {
-			const hasPlayer1 = (ops as any).hasPlayer1(match);
-			const hasPlayer2 = (ops as any).hasPlayer2(match);
-
-			const exactlyOnePlayer = (hasPlayer1 && !hasPlayer2) || (!hasPlayer1 && hasPlayer2);
-			if (!exactlyOnePlayer || match.resultado) continue;
-
-			const nextRound = round + 1;
-			const winnerId = hasPlayer1 ? (ops as any).getPlayer1Id(match) : (ops as any).getPlayer2Id(match);
-
-			if (round < lastRound) {
-				await ops.update({
-					where: (ops as any).getMatchWhere(match),
-					data: { resultado: 'BYE' }
-				});
-			}
-
-			if (nextRound <= lastRound) {
-				const nextPos = Math.ceil(match.position / 2);
-				const slot: 1 | 2 = match.position % 2 === 1 ? 1 : 2;
-				await ops.update(ops.makeByeUpdateArgs(nextRound, nextPos, slot, winnerId));
-			}
-		}
-	}
+	// BYEs são propagados APENAS da rodada 1 para a rodada 2
+	// Isso permite que atletas com BYE avancem para a semifinal, mas não automaticamente além disso
+	// Rodadas posteriores exigem vitórias reais
+	
+	// Não faz nada - o buildBracket já avança os BYEs da rodada 1 para rodada 2
+	// Esta função fica vazia para evitar propagação automática indesejada
+	return;
 }
 
 async function buildBracket(firstRoundPairs: Pair[], ops: BracketOps) {
@@ -336,6 +347,17 @@ export default {
 			const cm = await getCategoriaModalidadeOr404(idCampeonatoModalidade);
 			const mod = cm.categoria?.modalidade;
 			const isEquipe = isEquipeModalidade(mod);
+			
+			const inscricoesCount = isEquipe
+				? await prisma.inscricaoEquipe.count({ where: { idCampeonatoModalidade, status: 'INSCRITO' } })
+				: await prisma.inscricaoAtleta.count({ where: { idCampeonatoModalidade, status: 'INSCRITO' } });
+			
+			if (inscricoesCount < 2) {
+				return res.status(400).json({ 
+					message: 'Inscrições insuficientes para gerar chaveamento. Necessário pelo menos 2 participantes.' 
+				});
+			}
+			
 			const existingMatches = isEquipe
 				? await prisma.partidaEquipe.count({ where: { idCampeonatoModalidade } })
 				: await prisma.partidaAtleta.count({ where: { idCampeonatoModalidade } });
@@ -373,6 +395,18 @@ export default {
 		try {
 			const idCampeonatoModalidade = Number(req.params.idCampeonatoModalidade);
 			if (!idCampeonatoModalidade) return res.status(400).json({ message: 'Categoria inválida' });
+			
+			const inscricoesCount = await prisma.inscricaoAtleta.count({
+				where: {
+					idCampeonatoModalidade,
+					status: 'INSCRITO'
+				}
+			});
+			
+			if (inscricoesCount === 0) {
+				return res.json([]);
+			}
+			
 			const partidas = await prisma.partidaAtleta.findMany({
 				where: { idCampeonatoModalidade },
 				include: {
@@ -399,7 +433,13 @@ export default {
 				},
 				orderBy: [{ round: 'asc' }, { position: 'asc' }],
 			});
-			return res.json(partidas);
+			
+			// Filtra partidas onde ambos os participantes são null (BYE vs BYE oculto)
+			const partidasFiltradas = partidas.filter(partida => 
+				partida.idInscricaoAtleta1 !== null || partida.idInscricaoAtleta2 !== null
+			);
+			
+			return res.json(partidasFiltradas);
 		} catch (err: any) {
 			return res.status(500).json({ message: err?.message || 'Erro ao listar partidas de atleta' });
 		}
@@ -409,6 +449,18 @@ export default {
 		try {
 			const idCampeonatoModalidade = Number(req.params.idCampeonatoModalidade);
 			if (!idCampeonatoModalidade) return res.status(400).json({ message: 'Categoria inválida' });
+			
+			const inscricoesCount = await prisma.inscricaoEquipe.count({
+				where: {
+					idCampeonatoModalidade,
+					status: 'INSCRITO'
+				}
+			});
+			
+			if (inscricoesCount === 0) {
+				return res.json([]);
+			}
+			
 			const partidas = await prisma.partidaEquipe.findMany({
 				where: { idCampeonatoModalidade },
 				include: {
@@ -435,7 +487,13 @@ export default {
 				},
 				orderBy: [{ round: 'asc' }, { position: 'asc' }],
 			});
-			return res.json(partidas);
+			
+			// Filtra partidas onde ambos os participantes são null (BYE vs BYE oculto)
+			const partidasFiltradas = partidas.filter(partida => 
+				partida.idInscricaoEquipe1 !== null || partida.idInscricaoEquipe2 !== null
+			);
+			
+			return res.json(partidasFiltradas);
 		} catch (err: any) {
 			return res.status(500).json({ message: err?.message || 'Erro ao listar partidas de equipe' });
 		}
