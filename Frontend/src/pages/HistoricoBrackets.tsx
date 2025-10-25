@@ -86,10 +86,11 @@ const createAtletaParticipant = (
   const inscricao = slot === 1 ? partida.inscricaoAtleta1 : partida.inscricaoAtleta2;
   if (!inscricao || !inscricao.atleta) {
     const isBye = partida.resultado === 'BYE' && slot === 2;
+    const isAwaiting = partida.round > 1; // Aguardando vencedor em rodadas posteriores
     return {
       idInscricao: null,
       nome: isBye ? 'Sem adversário (BYE)' : fallbackParticipantLabel(partida.round),
-      isBye,
+      isBye: isBye || isAwaiting, // Trata "Aguardando vencedor" como BYE visual
     };
   }
   return {
@@ -110,10 +111,11 @@ const createEquipeParticipant = (
   const inscricao = slot === 1 ? partida.inscricaoEquipe1 : partida.inscricaoEquipe2;
   if (!inscricao || !inscricao.equipe) {
     const isBye = partida.resultado === 'BYE' && slot === 2;
+    const isAwaiting = partida.round > 1; // Aguardando vencedor em rodadas posteriores
     return {
       idInscricao: null,
       nome: isBye ? 'Sem adversário (BYE)' : fallbackParticipantLabel(partida.round),
-      isBye,
+      isBye: isBye || isAwaiting, // Trata "Aguardando vencedor" como BYE visual
     };
   }
   return {
@@ -195,8 +197,16 @@ const normalizeMatches = (
       )
     : 0;
   const totalParticipants = participantSet.size > 0 ? participantSet.size : fallbackTotal;
+  
+  // Calcula quantas rodadas deveriam existir e preenche vazias
+  const expectedRounds = totalParticipants > 0 ? Math.ceil(Math.log2(totalParticipants)) : rounds.length;
+  const completeRounds: BracketRound[] = [];
+  for (let i = 1; i <= expectedRounds; i++) {
+    const existingRound = rounds.find(r => r.round === i);
+    completeRounds.push(existingRound || { round: i, matches: [] });
+  }
 
-  const finalRound = rounds[rounds.length - 1];
+  const finalRound = completeRounds[completeRounds.length - 1];
   let champion: BracketParticipant | null = null;
   if (finalRound) {
     const finalMatch = finalRound.matches[0];
@@ -209,7 +219,7 @@ const normalizeMatches = (
 
   return {
     type,
-    rounds,
+    rounds: completeRounds,
     totalParticipants,
     champion,
   };
@@ -277,6 +287,12 @@ const HistoricoBrackets: React.FC = () => {
     return normalizeMatches(bracketsData, type);
   }, [bracketsData, selectedCategoria]);
 
+  const chaveamentosGerados = useMemo(() => {
+    // Conta apenas se a categoria selecionada tem chaveamento gerado
+    if (!normalizedBracket || !normalizedBracket.rounds.length) return 0;
+    return 1;
+  }, [normalizedBracket]);
+
   const handleViewBracket = useCallback(() => {
     if (!normalizedBracket) {
       toast({
@@ -341,7 +357,9 @@ const HistoricoBrackets: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-gray-500">Chaveamentos Gerados</p>
-                  <p className="text-2xl font-semibold text-gray-900">{categorias.length}</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {selectedModalidade ? chaveamentosGerados : '-'}
+                  </p>
                 </div>
               </CardContent>
             </Card>
