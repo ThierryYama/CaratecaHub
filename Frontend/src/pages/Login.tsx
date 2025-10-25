@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
+import { MaskedInput } from '@/components/ui/masked-input';
+import { validarEmail } from '@/lib/validations';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -35,6 +37,11 @@ const Login = () => {
       setError('Preencha todos os campos');
       return;
     }
+    // Validar email
+    if (!validarEmail(email)) {
+      setError('E-mail inválido');
+      return;
+    }
     loginMutation.mutate();
   };
 
@@ -57,12 +64,12 @@ const Login = () => {
             )}
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
-              <Input
+              <MaskedInput
                 id="email"
-                type="email"
+                mask="email"
                 placeholder="seu@email.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={setEmail}
                 disabled={loginMutation.isPending}
               />
             </div>
