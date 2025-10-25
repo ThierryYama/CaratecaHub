@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CampeonatoDetalhado, fetchCampeonatosPublicos, getStoredAssociacao, Status } from '@/services/api';
-import { CalendarDays, MapPin, Trophy, Users, Building2, Search, Filter } from 'lucide-react';
+import { CalendarDays, MapPin, Trophy, Users, Building2, Search, Filter, History, Award } from 'lucide-react';
 
 const CampeonatosPublicos: React.FC = () => {
   const { toggle } = useSidebar();
@@ -213,12 +213,13 @@ const CampeonatosPublicos: React.FC = () => {
                   const dataInicio = new Date(c.dataInicio);
                   const dataFormatada = dataInicio.toLocaleDateString('pt-BR');
                   const horaFormatada = dataInicio.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                  const isPendente = c.status === Status.PENDENTE;
                   
                   return (
                     <Card 
                       key={c.idCampeonato} 
-                      className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]"
-                      onClick={() => navigate(`/inscrever-atletas/${c.idCampeonato}`)}
+                      className={`transition-all duration-200 ${isPendente ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02]' : 'cursor-default'}`}
+                      onClick={isPendente ? () => navigate(`/inscrever-atletas/${c.idCampeonato}`) : undefined}
                     >
                       <CardHeader>
                         <div className="flex justify-between items-start gap-4">
@@ -263,23 +264,80 @@ const CampeonatosPublicos: React.FC = () => {
 
                           {/* Estatísticas */}
                           <div className="pt-3 border-t border-border">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <Trophy className="w-4 h-4" />
                                 <span className="text-sm">
                                   {c.modalidades?.length || 0} {(c.modalidades?.length || 0) === 1 ? 'categoria' : 'categorias'}
                                 </span>
                               </div>
-                              <Button 
-                                className="bg-red-600 hover:bg-red-700 text-white shadow-md"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/inscrever-atletas/${c.idCampeonato}`);
-                                }}
-                              >
-                                <Users className="w-4 h-4 mr-2" />
-                                Inscrever
-                              </Button>
+                            </div>
+                            
+                            {/* Botões de ação baseados no status */}
+                            <div className="flex gap-2 mt-3">
+                              {c.status === Status.PENDENTE && (
+                                <Button 
+                                  className="flex-1 bg-red-600 hover:bg-red-700 text-white shadow-md"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/inscrever-atletas/${c.idCampeonato}`);
+                                  }}
+                                >
+                                  <Users className="w-4 h-4 mr-2" />
+                                  Inscrever
+                                </Button>
+                              )}
+                              
+                              {c.status === Status.EM_ANDAMENTO && (
+                                <>
+                                  <Button 
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/historico-brackets-publico/${c.idCampeonato}`);
+                                    }}
+                                  >
+                                    <History className="w-4 h-4 mr-2" />
+                                    Chaveamentos
+                                  </Button>
+                                  <Button 
+                                    variant="outline"
+                                    className="flex-1"
+                                    disabled
+                                    title="Ranking disponível apenas após finalização do campeonato"
+                                  >
+                                    <Award className="w-4 h-4 mr-2" />
+                                    Ranking
+                                  </Button>
+                                </>
+                              )}
+                              
+                              {c.status === Status.FINALIZADO && (
+                                <>
+                                  <Button 
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/historico-brackets-publico/${c.idCampeonato}`);
+                                    }}
+                                  >
+                                    <History className="w-4 h-4 mr-2" />
+                                    Chaveamentos
+                                  </Button>
+                                  <Button 
+                                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white shadow-md"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/resultados-finais-publico/${c.idCampeonato}`);
+                                    }}
+                                  >
+                                    <Award className="w-4 h-4 mr-2" />
+                                    Resultados
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
