@@ -45,7 +45,7 @@ const Inscricoes: React.FC = () => {
   const navigate = useNavigate();
 
   const params = useParams<{ id?: string }>();
-  const persistedId = typeof window !== 'undefined' ? localStorage.getItem('currentCampeonatoId') : undefined;
+  const persistedId = typeof globalThis === 'undefined' ? undefined : globalThis.localStorage?.getItem('currentCampeonatoId');
   const campeonatoId = useMemo(() => {
     if (params.id) return Number(params.id);
     if (persistedId) return Number(persistedId);
@@ -577,19 +577,22 @@ const Inscricoes: React.FC = () => {
               className="bg-blue-600 hover:bg-blue-700 px-8"
               disabled={!!etapasStatus?.inscricoesConfirmadas || confirmarInscricoesMutation.isPending || !validacaoInscricoes.podeConfirmar}
               title={
-                etapasStatus?.inscricoesConfirmadas 
-                  ? 'Inscrições já confirmadas' 
+                etapasStatus?.inscricoesConfirmadas
+                  ? 'Inscrições já confirmadas'
+                  : !validacaoInscricoes.podeConfirmar
+                    ? 'Cada categoria precisa ter pelo menos 2 participantes inscritos.'
+                    : undefined
+              }
               onClick={() => {
+                if (etapasStatus?.inscricoesConfirmadas) return;
                 if (!validacaoInscricoes.podeConfirmar) {
-                  toast({ 
-                    title: 'Inscrições insuficientes', 
+                  toast({
+                    title: 'Inscrições insuficientes',
                     description: 'Cada categoria precisa ter pelo menos 2 participantes inscritos.',
-                    variant: 'destructive' 
+                    variant: 'destructive'
                   });
                   return;
                 }
-                setShowConfirmModal(true);
-              }}
                 setConfirmDialog({
                   open: true,
                   onConfirm: () => confirmarInscricoesMutation.mutate()

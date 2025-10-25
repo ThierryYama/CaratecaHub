@@ -47,8 +47,6 @@ const VincularCategorias = () => {
   const [generoFiltro, setGeneroFiltro] = useState<'all' | 'Masculino' | 'Feminino' | 'Outro' | 'Misto'>('all');
   const [modalidadeFiltro, setModalidadeFiltro] = useState<'all' | 'KATA' | 'KUMITE' | 'KATA_EQUIPE' | 'KUMITE_EQUIPE'>('all');
   const [nomeFiltro, setNomeFiltro] = useState<string>('');
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const { toast } = useToast();
   const { toast } = useToast();
 
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -56,7 +54,7 @@ const VincularCategorias = () => {
   const [confirmDialogMessage, setConfirmDialogMessage] = useState<string>('');
 
   const params = useParams<{ id?: string }>();
-  const persistedId = typeof window !== 'undefined' ? localStorage.getItem('currentCampeonatoId') : undefined;
+  const persistedId = typeof globalThis === 'undefined' ? undefined : globalThis.localStorage?.getItem('currentCampeonatoId');
   const campeonatoId = useMemo(() => {
     if (params.id) return Number(params.id);
     if (persistedId) return Number(persistedId);
@@ -427,36 +425,16 @@ const VincularCategorias = () => {
                                     if (confirmDialogAction) confirmDialogAction();
                                     setConfirmDialogOpen(false);
                                   }}
-              disabled={!Array.isArray(categoriasVinculadas) || categoriasVinculadas.length === 0 || etapasStatus?.categoriasConfirmadas}
-              onClick={() => setShowConfirmDialog(true)}
-              title={etapasStatus?.categoriasConfirmadas ? 'Categorias já confirmadas' : ''}
-            >
-              Confirmar Categorias
-            </Button>
-            {showConfirmDialog && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-                  <h2 className="text-lg font-semibold mb-4">Confirmar Categorias</h2>
-                  <p className="mb-6">
-                    Tem certeza que deseja confirmar as categorias? Após a confirmação, não será possível adicionar ou remover categorias.
-                  </p>
-                  <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-                      Cancelar
-                    </Button>
-                    <Button
-                      className="bg-blue-600 hover:bg-blue-700"
-                      onClick={() => {
-                        confirmarCategoriasMutation.mutate();
-                        setShowConfirmDialog(false);
-                      }}
-                    >
-                      Confirmar
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+                                >
+                                  Remover
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
                 </Table>
               )}
             </CardContent>

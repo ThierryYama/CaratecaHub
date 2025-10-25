@@ -31,13 +31,13 @@ async function refreshCampeonatoChaveamentoStatus(idCampeonato: number) {
 					where: { idCampeonatoModalidade: modalidade.idCampeonatoModalidade },
 					orderBy: [{ round: 'desc' }, { position: 'asc' }],
 				});
-				return !!finalMatch?.resultado;
+				return !!(finalMatch?.resultado && finalMatch.resultado !== 'BYE');
 			}
 			const finalMatch = await prisma.partidaAtleta.findFirst({
 				where: { idCampeonatoModalidade: modalidade.idCampeonatoModalidade },
 				orderBy: [{ round: 'desc' }, { position: 'asc' }],
 			});
-			return !!finalMatch?.resultado;
+			return !!(finalMatch?.resultado && finalMatch.resultado !== 'BYE');
 		}),
 	);
 
@@ -143,7 +143,7 @@ type Pair = [Participant | null, Participant | null];
 interface BracketOps {
 	createMany(args: any): Promise<any>;
 	update(args: any): Promise<any>;
-	makeRound1Row(pair: Pair, index: number): any;
+	makeRound1Row(pair: Pair, index: number, isFinalRound1: boolean): any;
 	makeEmptyRow(round: number, position: number): any;
 	makeByeUpdateArgs(targetRound: number, position: number, slot: 1 | 2, winnerId: number): { where: any; data: any };
 }
@@ -181,10 +181,11 @@ async function propagateByes(idCampeonatoModalidade: number, ops: BracketOps, la
 }
 
 async function buildBracket(firstRoundPairs: Pair[], ops: BracketOps) {
-	const round1Rows = firstRoundPairs.map((pair, idx) => ops.makeRound1Row(pair, idx));
+	const lastRound = countRoundsFromMatches(firstRoundPairs.length);
+	const isFinalRound1 = lastRound === 1;
+	const round1Rows = firstRoundPairs.map((pair, idx) => ops.makeRound1Row(pair, idx, isFinalRound1));
 	if (round1Rows.length) await ops.createMany({ data: round1Rows, skipDuplicates: true });
 
-	const lastRound = countRoundsFromMatches(firstRoundPairs.length);
 	for (let round = 2; round <= lastRound; round++) {
 		const positions = Math.ceil(firstRoundPairs.length / (2 ** (round - 1)));
 		if (positions <= 0) continue;
@@ -232,7 +233,7 @@ async function generateEquipeBracket(idCampeonatoModalidade: number) {
 				position: match.position
 			}
 		}),
-		makeRound1Row: (pair: Pair, idx: number) => {
+		makeRound1Row: (pair: Pair, idx: number, isFinalRound1: boolean) => {
 			const [a, b] = pair;
 			return {
 				idCampeonatoModalidade,
@@ -240,7 +241,8 @@ async function generateEquipeBracket(idCampeonatoModalidade: number) {
 				position: idx + 1,
 				idInscricaoEquipe1: a?.id ?? null,
 				idInscricaoEquipe2: b?.id ?? null,
-				resultado: a && !b ? 'BYE' : null,
+				// Nunca marcar a FINAL como BYE: se a rodada 1 já é a final, manter resultado nulo.
+				resultado: a && !b && !isFinalRound1 ? 'BYE' : null,
 			};
 		},
 		makeEmptyRow: (round: number, position: number) => ({
@@ -255,6 +257,11 @@ async function generateEquipeBracket(idCampeonatoModalidade: number) {
 	};
 	const lastRound = await buildBracket(firstRoundPairs, ops);
 	await propagateByes(idCampeonatoModalidade, ops, lastRound);
+	// Sanitize: nunca deixe a FINAL com resultado 'BYE'
+	await prisma.partidaEquipe.updateMany({
+		where: { idCampeonatoModalidade, round: lastRound, resultado: 'BYE' },
+		data: { resultado: null },
+	});
 	return 'Chaveamento (equipes) criado com rounds';
 }
 
@@ -281,7 +288,7 @@ async function generateAtletaBracket(idCampeonatoModalidade: number) {
 				position: match.position
 			}
 		}),
-		makeRound1Row: (pair: Pair, idx: number) => {
+		makeRound1Row: (pair: Pair, idx: number, isFinalRound1: boolean) => {
 			const [a, b] = pair;
 			return {
 				idCampeonatoModalidade,
@@ -289,7 +296,8 @@ async function generateAtletaBracket(idCampeonatoModalidade: number) {
 				position: idx + 1,
 				idInscricaoAtleta1: a?.id ?? null,
 				idInscricaoAtleta2: b?.id ?? null,
-				resultado: a && !b ? 'BYE' : null,
+				// Nunca marcar a FINAL como BYE: se a rodada 1 já é a final, manter resultado nulo.
+				resultado: a && !b && !isFinalRound1 ? 'BYE' : null,
 			};
 		},
 		makeEmptyRow: (round: number, position: number) => ({
@@ -304,6 +312,11 @@ async function generateAtletaBracket(idCampeonatoModalidade: number) {
 	};
 	const lastRound = await buildBracket(firstRoundPairs, ops);
 	await propagateByes(idCampeonatoModalidade, ops, lastRound);
+	// Sanitize: nunca deixe a FINAL com resultado 'BYE'
+	await prisma.partidaAtleta.updateMany({
+		where: { idCampeonatoModalidade, round: lastRound, resultado: 'BYE' },
+		data: { resultado: null },
+	});
 	return 'Chaveamento (atletas) criado com rounds';
 }
 

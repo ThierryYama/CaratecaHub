@@ -202,7 +202,8 @@ const normalizeMatches = (
   let champion: BracketParticipant | null = null;
   if (finalRound) {
     const finalMatch = finalRound.matches[0];
-    if (finalMatch && finalMatch.vencedorSlot) {
+    const hasRealResult = finalMatch && finalMatch.resultado && finalMatch.resultado !== 'BYE';
+    if (hasRealResult && finalMatch.vencedorSlot) {
       const candidate = finalMatch.participants[finalMatch.vencedorSlot - 1];
       champion = candidate && !candidate.isBye ? candidate : null;
     }
