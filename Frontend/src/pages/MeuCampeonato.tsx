@@ -214,6 +214,14 @@ const MeuCampeonato = () => {
     }
   });
 
+  const [estadoEndereco, setEstadoEndereco] = useState<string>(campeonato?.endereco?.estado || '');
+
+  useEffect(() => {
+    if (editOpen && campeonato?.endereco?.estado) {
+      setEstadoEndereco(campeonato.endereco.estado);
+    }
+  }, [editOpen, campeonato?.endereco?.estado]);
+
   const handleSubmitEdit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!campeonato) return;
@@ -230,7 +238,7 @@ const MeuCampeonato = () => {
       complemento: formData.get('complemento') as string || undefined,
       bairro: formData.get('bairro') as string,
       cidade: formData.get('cidade') as string,
-      estado: formData.get('estado') as string,
+      estado: estadoEndereco,
       cep: formData.get('cep') as string,
     };
     try {
@@ -746,14 +754,10 @@ const MeuCampeonato = () => {
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium" htmlFor="estado">Estado</label>
-                        <input type="hidden" name="estado" value={campeonato.endereco?.estado || ''} />
                         <EstadoSelect
                           id="estado"
-                          value={campeonato.endereco?.estado || ''}
-                          onChange={(uf) => {
-                            const hidden = document.querySelector<HTMLInputElement>('input[name="estado"]');
-                            if (hidden) hidden.value = uf;
-                          }}
+                          value={estadoEndereco}
+                          onChange={setEstadoEndereco}
                         />
                       </div>
                       <div className="space-y-2">
