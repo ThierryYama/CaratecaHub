@@ -8,6 +8,7 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import { useSidebar } from '@/context/SidebarContext';
@@ -41,13 +42,18 @@ import {
   fetchEtapas,
   confirmarCategorias as confirmarCategoriasApi,
 } from '@/services/api';
-
 const VincularCategorias = () => {
   const { toggle: toggleSidebar } = useSidebar();
   const [generoFiltro, setGeneroFiltro] = useState<'all' | 'Masculino' | 'Feminino' | 'Outro' | 'Misto'>('all');
   const [modalidadeFiltro, setModalidadeFiltro] = useState<'all' | 'KATA' | 'KUMITE' | 'KATA_EQUIPE' | 'KUMITE_EQUIPE'>('all');
   const [nomeFiltro, setNomeFiltro] = useState<string>('');
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { toast } = useToast();
+  const { toast } = useToast();
+
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmDialogAction, setConfirmDialogAction] = useState<(() => void) | null>(null);
+  const [confirmDialogMessage, setConfirmDialogMessage] = useState<string>('');
 
   const params = useParams<{ id?: string }>();
   const persistedId = typeof window !== 'undefined' ? localStorage.getItem('currentCampeonatoId') : undefined;
@@ -390,23 +396,67 @@ const VincularCategorias = () => {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={removeMutation.isPending || etapasStatus?.categoriasConfirmadas}
-                            onClick={() => {
-                              if (globalThis.confirm('Tem certeza que deseja remover esta categoria do campeonato?')) {
-                                removeMutation.mutate(categoria.idCategoria);
-                              }
-                            }}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
+                          <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={removeMutation.isPending || etapasStatus?.categoriasConfirmadas}
+                                onClick={() => {
+                                  setConfirmDialogMessage('Tem certeza que deseja remover esta categoria do campeonato?');
+                                  setConfirmDialogAction(() => () => removeMutation.mutate(categoria.idCategoria));
+                                  setConfirmDialogOpen(true);
+                                }}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <span className="font-semibold">Confirmação</span>
+                              </DialogHeader>
+                              <div className="py-4">{confirmDialogMessage}</div>
+                              <DialogFooter>
+                                <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
+                                  Cancelar
+                                </Button>
+                                <Button
+                                  className="bg-red-600 hover:bg-red-700"
+                                  onClick={() => {
+                                    if (confirmDialogAction) confirmDialogAction();
+                                    setConfirmDialogOpen(false);
+                                  }}
+              disabled={!Array.isArray(categoriasVinculadas) || categoriasVinculadas.length === 0 || etapasStatus?.categoriasConfirmadas}
+              onClick={() => setShowConfirmDialog(true)}
+              title={etapasStatus?.categoriasConfirmadas ? 'Categorias já confirmadas' : ''}
+            >
+              Confirmar Categorias
+            </Button>
+            {showConfirmDialog && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+                  <h2 className="text-lg font-semibold mb-4">Confirmar Categorias</h2>
+                  <p className="mb-6">
+                    Tem certeza que deseja confirmar as categorias? Após a confirmação, não será possível adicionar ou remover categorias.
+                  </p>
+                  <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={() => {
+                        confirmarCategoriasMutation.mutate();
+                        setShowConfirmDialog(false);
+                      }}
+                    >
+                      Confirmar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
                 </Table>
               )}
             </CardContent>
@@ -424,18 +474,42 @@ const VincularCategorias = () => {
               <Save className="w-4 h-4 mr-2" />
               Atualizar Listas
             </Button>
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 px-8"
-              disabled={!Array.isArray(categoriasVinculadas) || categoriasVinculadas.length === 0 || etapasStatus?.categoriasConfirmadas}
-              onClick={() => {
-                if (globalThis.confirm('Tem certeza que deseja confirmar as categorias? Após a confirmação, não será possível adicionar ou remover categorias.')) {
-                  confirmarCategoriasMutation.mutate();
-                }
-              }}
-              title={etapasStatus?.categoriasConfirmadas ? 'Categorias já confirmadas' : ''}
-            >
-              Confirmar Categorias
-            </Button>
+            <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 px-8"
+                  disabled={!Array.isArray(categoriasVinculadas) || categoriasVinculadas.length === 0 || etapasStatus?.categoriasConfirmadas}
+                  onClick={() => {
+                    setConfirmDialogMessage('Tem certeza que deseja confirmar as categorias? Após a confirmação, não será possível adicionar ou remover categorias.');
+                    setConfirmDialogAction(() => () => confirmarCategoriasMutation.mutate());
+                    setConfirmDialogOpen(true);
+                  }}
+                  title={etapasStatus?.categoriasConfirmadas ? 'Categorias já confirmadas' : ''}
+                >
+                  Confirmar Categorias
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <span className="font-semibold">Confirmação</span>
+                </DialogHeader>
+                <div className="py-4">{confirmDialogMessage}</div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={() => {
+                      if (confirmDialogAction) confirmDialogAction();
+                      setConfirmDialogOpen(false);
+                    }}
+                  >
+                    Confirmar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </main>
       </div>
