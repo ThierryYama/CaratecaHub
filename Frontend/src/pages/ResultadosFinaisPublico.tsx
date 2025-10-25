@@ -69,6 +69,8 @@ const PONTOS_OURO = 5;
 const PONTOS_PRATA = 3;
 const PONTOS_BRONZE = 1;
 
+const RESULTADO_BYE = 'BYE';
+
 interface ResultadoCategoria {
   categoria: string;
   modalidade: Modalidade;
@@ -163,7 +165,7 @@ const extrairResultados = (
   const terceiros: any[] = [];
 
   semifinais.forEach(semi => {
-    if (semi.resultado && semi.resultado !== 'BYE') {
+    if (semi.resultado && semi.resultado !== RESULTADO_BYE) {
       const perdedorSlotSemi = semi.resultado.endsWith('_1') ? 2 : 1;
       
       if (tipo === 'ATLETA') {
