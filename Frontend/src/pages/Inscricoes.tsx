@@ -100,6 +100,68 @@ const Inscricoes: React.FC = () => {
     enabled: tab === 'equipes' && selectedModalidadeId != null,
   });
 
+  // Hook para buscar todas as inscrições de atletas por categoria
+  const allInscricoesAtletas = useQuery({
+    queryKey: ['allInscricoesAtletas', campeonatoId],
+    queryFn: async () => {
+      if (!campeonatoId) return [];
+      const modalidades = modalidadesIndividuais;
+      const promises = modalidades.map(m => 
+        fetchInscricoesAtletaPorIdDeCampeonatoModalidade(m.idCampeonatoModalidade)
+          .then(inscricoes => ({ idModalidade: m.idCampeonatoModalidade, inscricoes }))
+          .catch(() => ({ idModalidade: m.idCampeonatoModalidade, inscricoes: [] }))
+      );
+      return Promise.all(promises);
+    },
+    enabled: !!campeonatoId,
+  });
+
+  // Hook para buscar todas as inscrições de equipes por categoria
+  const allInscricoesEquipes = useQuery({
+    queryKey: ['allInscricoesEquipes', campeonatoId],
+    queryFn: async () => {
+      if (!campeonatoId) return [];
+      const modalidades = modalidadesEquipe;
+      const promises = modalidades.map(m => 
+        fetchInscricoesEquipePorIdDeCampeonatoModalidade(m.idCampeonatoModalidade)
+          .then(inscricoes => ({ idModalidade: m.idCampeonatoModalidade, inscricoes }))
+          .catch(() => ({ idModalidade: m.idCampeonatoModalidade, inscricoes: [] }))
+      );
+      return Promise.all(promises);
+    },
+    enabled: !!campeonatoId,
+  });
+
+  // Verifica se todas as categorias têm pelo menos 2 inscritos
+  const validacaoInscricoes = useMemo(() => {
+    const categoriasInsuficientes: string[] = [];
+    
+    // Valida categorias de atletas
+    (allInscricoesAtletas.data ?? []).forEach(({ idModalidade, inscricoes }) => {
+      const modalidade = modalidadesIndividuais.find(m => m.idCampeonatoModalidade === idModalidade);
+      const inscritos = (inscricoes as InscricaoAtleta[]).filter(i => i.status === StatusInscricao.INSCRITO);
+      if (inscritos.length < 2 && modalidade) {
+        const label = `${modalidade.categoria?.nome || ''} · ${modalidade.categoria?.genero || ''} · ${modalidadeLabel(modalidade.categoria?.modalidade)}`;
+        categoriasInsuficientes.push(label);
+      }
+    });
+
+    // Valida categorias de equipes
+    (allInscricoesEquipes.data ?? []).forEach(({ idModalidade, inscricoes }) => {
+      const modalidade = modalidadesEquipe.find(m => m.idCampeonatoModalidade === idModalidade);
+      const inscritos = (inscricoes as InscricaoEquipe[]).filter(i => i.status === StatusInscricao.INSCRITO);
+      if (inscritos.length < 2 && modalidade) {
+        const label = `${modalidade.categoria?.nome || ''} · ${modalidade.categoria?.genero || ''} · ${modalidadeLabel(modalidade.categoria?.modalidade)}`;
+        categoriasInsuficientes.push(label);
+      }
+    });
+
+    return {
+      podeConfirmar: categoriasInsuficientes.length === 0,
+      categoriasInsuficientes,
+    };
+  }, [allInscricoesAtletas.data, allInscricoesEquipes.data, modalidadesIndividuais, modalidadesEquipe]);
+
   const inscreverAtleta = useMutation({
     mutationFn: async (vars: { idAtleta: number; idCampeonatoModalidade: number }) => {
       const created = await createInscricaoAtleta({ idAtleta: vars.idAtleta, idCampeonatoModalidade: vars.idCampeonatoModalidade });
@@ -437,10 +499,12 @@ const Inscricoes: React.FC = () => {
                           variant="outline"
                           className="text-red-600 hover:text-red-700 border-red-600"
                           onClick={() => {
-                            if (tab === 'atletas') {
-                              desvincularInscricaoAtleta.mutate(insc.idInscricaoAtleta);
-                            } else {
-                              desvincularInscricaoEquipe.mutate(insc.idInscricaoEquipe);
+                            if (globalThis.confirm('Tem certeza que deseja remover esta inscrição?')) {
+                              if (tab === 'atletas') {
+                                desvincularInscricaoAtleta.mutate(insc.idInscricaoAtleta);
+                              } else {
+                                desvincularInscricaoEquipe.mutate(insc.idInscricaoEquipe);
+                              }
                             }
                           }}
                         >
@@ -475,21 +539,59 @@ const Inscricoes: React.FC = () => {
             {renderList}
             {renderInscritos}
           </div>
+          {!validacaoInscricoes.podeConfirmar && validacaoInscricoes.categoriasInsuficientes.length > 0 && (
+            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                <div>
+                  <h4 className="font-semibold text-red-900 mb-2">Categorias com inscrições insuficientes</h4>
+                  <p className="text-sm text-red-700 mb-2">
+                    Cada categoria precisa ter pelo menos 2 participantes inscritos para confirmar as inscrições.
+                  </p>
+                  <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+                    {validacaoInscricoes.categoriasInsuficientes.map((cat, idx) => (
+                      <li key={idx}>{cat}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="flex justify-center gap-3 mt-6">
             <Button
               className="bg-green-600 hover:bg-green-700 px-8"
               onClick={() => {
                 refetchCamp();
                 refetchEtapas();
+                allInscricoesAtletas.refetch();
+                allInscricoesEquipes.refetch();
               }}
             >
               Atualizar Listas
             </Button>
             <Button
               className="bg-blue-600 hover:bg-blue-700 px-8"
-              disabled={!!etapasStatus?.inscricoesConfirmadas || confirmarInscricoesMutation.isPending}
-              title={etapasStatus?.inscricoesConfirmadas ? 'Inscrições já confirmadas' : ''}
-              onClick={() => confirmarInscricoesMutation.mutate()}
+              disabled={!!etapasStatus?.inscricoesConfirmadas || confirmarInscricoesMutation.isPending || !validacaoInscricoes.podeConfirmar}
+              title={
+                etapasStatus?.inscricoesConfirmadas 
+                  ? 'Inscrições já confirmadas' 
+                  : !validacaoInscricoes.podeConfirmar 
+                    ? 'Cada categoria precisa ter pelo menos 2 participantes inscritos'
+                    : ''
+              }
+              onClick={() => {
+                if (!validacaoInscricoes.podeConfirmar) {
+                  toast({ 
+                    title: 'Inscrições insuficientes', 
+                    description: 'Cada categoria precisa ter pelo menos 2 participantes inscritos.',
+                    variant: 'destructive' 
+                  });
+                  return;
+                }
+                if (globalThis.confirm('Tem certeza que deseja confirmar as inscrições? Após a confirmação, não será possível modificar as inscrições.')) {
+                  confirmarInscricoesMutation.mutate();
+                }
+              }}
             >
               {confirmarInscricoesMutation.isPending ? 'Confirmando...' : 'Confirmar Inscrições'}
             </Button>
