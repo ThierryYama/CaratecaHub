@@ -87,8 +87,11 @@ const ChaveamentoBracket: React.FC<ChaveamentoBracketProps> = ({
     );
   }
 
-  const totalRounds = bracket.rounds.length;
+  // Calcula o total de rodadas baseado no número de participantes (próxima potência de 2)
+  // Isso garante labels corretos mesmo quando rodadas estão vazias/ocultas
   const participantCount = bracket.totalParticipants;
+  const totalRounds = participantCount > 0 ? Math.ceil(Math.log2(participantCount)) : bracket.rounds.length;
+  
   const champion = bracket.champion;
   const championParticipantId = champion?.idInscricao ?? null;
   const championName = champion?.nome;
@@ -238,7 +241,7 @@ const ChaveamentoBracket: React.FC<ChaveamentoBracketProps> = ({
                       <Card key={match.id} className="shadow-sm border-gray-200">
                         <CardContent className="p-3 space-y-3">
                           {renderParticipant(p1, {
-                            highlight: vencedorSlot === 1,
+                            highlight: vencedorSlot === 1 && !p1.isBye,
                             match,
                             slot: 1,
                             canAdvance,
@@ -246,7 +249,7 @@ const ChaveamentoBracket: React.FC<ChaveamentoBracketProps> = ({
                           })}
                           <div className="text-center text-[11px] text-gray-400 uppercase tracking-wide">vs</div>
                           {renderParticipant(p2, {
-                            highlight: vencedorSlot === 2,
+                            highlight: vencedorSlot === 2 && !p2.isBye,
                             match,
                             slot: 2,
                             canAdvance,
