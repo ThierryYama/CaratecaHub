@@ -83,7 +83,30 @@ const Equipes: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: EquipeUpdateInput }) => updateEquipe(id, data),
+    mutationFn: async ({ id, data }: { id: number; data: EquipeUpdateInput }) => {
+      if (data.genero && data.genero !== 'Misto') {
+        const equipeOriginal = equipes.find(e => e.idEquipe === id);
+        if (equipeOriginal && equipeOriginal.genero !== data.genero) {
+          const atletasIncompativeis = equipeOriginal.membros.filter(
+            m => m.atleta.genero !== data.genero
+          );
+          
+          for (const membro of atletasIncompativeis) {
+            await removerAtletaEquipe(id, membro.atleta.idAtleta);
+          }
+          
+          if (atletasIncompativeis.length > 0) {
+            toast({
+              title: 'Atletas incompatíveis removidos',
+              description: `${atletasIncompativeis.length} atleta(s) removido(s) por não corresponder ao novo gênero.`,
+              variant: 'default',
+            });
+          }
+        }
+      }
+      
+      return updateEquipe(id, data);
+    },
     onSuccess: () => {
       toast({ title: 'Equipe atualizada com sucesso!' });
       queryClient.invalidateQueries({ queryKey: ['equipes'] });
@@ -132,8 +155,27 @@ const Equipes: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const camposFaltando: string[] = [];
+
+    if (!formData.nome.trim()) {
+      camposFaltando.push('Nome');
+    }
+
+    if (!formData.genero) {
+      camposFaltando.push('Gênero');
+    }
+
     if (!equipeEditando && formData.atletasIds.length < 2) {
-      toast({ title: 'Selecione pelo menos 2 atletas', variant: 'destructive' });
+      camposFaltando.push('Atletas (mínimo 2)');
+    }
+
+    if (camposFaltando.length > 0) {
+      toast({
+        title: 'Campos obrigatórios faltando',
+        description: `Por favor, preencha: ${camposFaltando.join(', ')}.`,
+        variant: 'destructive'
+      });
       return;
     }
 
@@ -151,11 +193,15 @@ const Equipes: React.FC = () => {
 
   const handleEdit = (equipe: Equipe) => {
     setEquipeEditando(equipe);
-    setFormData({ nome: equipe.nome, descricao: equipe.descricao || '', atletasIds: equipe.membros.map(m => m.atleta.idAtleta), genero: equipe.genero });
+    setFormData({ nome: equipe.nome, descricao: equipe.descricao || '', atletasIds: [], genero: equipe.genero });
     setIsCreateEditDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => deleteMutation.mutate(id);
+  const handleDelete = (id: number) => {
+    if (globalThis.confirm('Tem certeza que deseja excluir esta equipe? Esta ação não pode ser desfeita.')) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   const handleViewDetails = (equipe: Equipe) => {
     setEquipeDetalhes(equipe);
@@ -169,7 +215,9 @@ const Equipes: React.FC = () => {
   };
 
   const handleRemoveAtleta = (idAtleta: number) => {
-    if (equipeDetalhes) removerAtletaMutation.mutate({ idEquipe: equipeDetalhes.idEquipe, idAtleta });
+    if (globalThis.confirm('Tem certeza que deseja remover este atleta da equipe?')) {
+      if (equipeDetalhes) removerAtletaMutation.mutate({ idEquipe: equipeDetalhes.idEquipe, idAtleta });
+    }
   };
 
   const atletasDisponiveis = useMemo(() => {
@@ -289,10 +337,32 @@ const Equipes: React.FC = () => {
                 <Input id="desc" value={formData.descricao} onChange={e => setFormData(p => ({ ...p, descricao: e.target.value }))} />
               </div>
               <div>
-                <Label>Gênero</Label>
-                <Select value={formData.genero} onValueChange={(v) => setFormData(p => ({ ...p, genero: v as any }))}>
+                <Label>Gênero <span className="text-red-500">*</span></Label>
+                <Select value={formData.genero} onValueChange={(v) => {
+                  const novoGenero = v as any;
+                  setFormData(p => {
+                    if (novoGenero !== 'Misto' && p.atletasIds.length > 0) {
+                      const atletasCompativeis = p.atletasIds.filter(id => {
+                        const atleta = atletas.find(a => a.idAtleta === id);
+                        return atleta && atleta.genero === novoGenero;
+                      });
+                      
+                      if (atletasCompativeis.length < p.atletasIds.length) {
+                        const removidos = p.atletasIds.length - atletasCompativeis.length;
+                        toast({
+                          title: 'Atletas incompatíveis removidos',
+                          description: `${removidos} atleta(s) removido(s) por não corresponder ao gênero selecionado.`,
+                          variant: 'default',
+                        });
+                      }
+                      
+                      return { ...p, genero: novoGenero, atletasIds: atletasCompativeis };
+                    }
+                    return { ...p, genero: novoGenero };
+                  });
+                }} required>
                   <SelectTrigger className="w-64">
-                    <SelectValue />
+                    <SelectValue placeholder="Selecione o gênero" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Misto">Misto</SelectItem>
