@@ -7,8 +7,6 @@ import {
   GitBranch,
   Loader2,
   Crown,
-  Medal,
-  Calendar,
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -17,14 +15,6 @@ import Sidebar from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -304,14 +294,6 @@ const HistoricoBrackets: React.FC = () => {
     setSelectedBracket(null);
   };
 
-  const categoriasSemChaveamento = categorias.filter(cat => {
-    return true;
-  });
-
-  const categoriasComChaveamento = categorias.filter(cat => {
-    return true;
-  });
-
   return (
     <div className="h-screen flex w-full bg-gray-50 overflow-hidden">
       <Sidebar
@@ -339,14 +321,14 @@ const HistoricoBrackets: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
             <Card>
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-3 rounded-lg bg-blue-100 text-blue-600">
                   <GitBranch className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Categorias</p>
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Total de Categorias</p>
                   <p className="text-2xl font-semibold text-gray-900">{categorias.length}</p>
                 </div>
               </CardContent>
@@ -357,32 +339,8 @@ const HistoricoBrackets: React.FC = () => {
                   <Trophy className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Com Chaveamento</p>
-                  <p className="text-2xl font-semibold text-gray-900">{categoriasComChaveamento.length}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-yellow-100 text-yellow-600">
-                  <History className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Sem Chaveamento</p>
-                  <p className="text-2xl font-semibold text-gray-900">{categoriasSemChaveamento.length}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-purple-100 text-purple-600">
-                  <Crown className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Campeões</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {categorias.filter(cat => normalizedBracket?.champion).length}
-                  </p>
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Chaveamentos Gerados</p>
+                  <p className="text-2xl font-semibold text-gray-900">{categorias.length}</p>
                 </div>
               </CardContent>
             </Card>
