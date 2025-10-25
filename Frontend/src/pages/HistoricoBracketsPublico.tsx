@@ -88,10 +88,11 @@ const createAtletaParticipant = (
   const inscricao = slot === 1 ? partida.inscricaoAtleta1 : partida.inscricaoAtleta2;
   if (!inscricao || !inscricao.atleta) {
     const isBye = partida.resultado === 'BYE' && slot === 2;
+    const isAwaiting = partida.round > 1; // Aguardando vencedor em rodadas posteriores
     return {
       idInscricao: null,
       nome: isBye ? 'Sem adversário (BYE)' : fallbackParticipantLabel(partida.round),
-      isBye,
+      isBye: isBye || isAwaiting, // Trata "Aguardando vencedor" como BYE visual
     };
   }
   return {
@@ -112,10 +113,11 @@ const createEquipeParticipant = (
   const inscricao = slot === 1 ? partida.inscricaoEquipe1 : partida.inscricaoEquipe2;
   if (!inscricao || !inscricao.equipe) {
     const isBye = partida.resultado === 'BYE' && slot === 2;
+    const isAwaiting = partida.round > 1; // Aguardando vencedor em rodadas posteriores
     return {
       idInscricao: null,
       nome: isBye ? 'Sem adversário (BYE)' : fallbackParticipantLabel(partida.round),
-      isBye,
+      isBye: isBye || isAwaiting, // Trata "Aguardando vencedor" como BYE visual
     };
   }
   return {
@@ -197,8 +199,16 @@ const normalizeMatches = (
       )
     : 0;
   const totalParticipants = participantSet.size > 0 ? participantSet.size : fallbackTotal;
+  
+  // Calcula quantas rodadas deveriam existir e preenche vazias
+  const expectedRounds = totalParticipants > 0 ? Math.ceil(Math.log2(totalParticipants)) : rounds.length;
+  const completeRounds: BracketRound[] = [];
+  for (let i = 1; i <= expectedRounds; i++) {
+    const existingRound = rounds.find(r => r.round === i);
+    completeRounds.push(existingRound || { round: i, matches: [] });
+  }
 
-  const finalRound = rounds[rounds.length - 1];
+  const finalRound = completeRounds[completeRounds.length - 1];
   let champion: BracketParticipant | null = null;
   if (finalRound) {
     const finalMatch = finalRound.matches[0];
@@ -211,7 +221,7 @@ const normalizeMatches = (
 
   return {
     type,
-    rounds,
+    rounds: completeRounds,
     totalParticipants,
     champion,
   };
