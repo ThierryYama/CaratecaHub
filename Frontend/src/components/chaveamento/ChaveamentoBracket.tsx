@@ -1,9 +1,9 @@
-
 import React from 'react';
-import { Trophy, Users, Medal, Loader2, Building2 } from 'lucide-react';
+import { Trophy, Users, Medal, Loader2, Building2, Undo2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export type BracketParticipant = {
@@ -44,7 +44,9 @@ interface ChaveamentoBracketProps {
   loading?: boolean;
   emptyMessage?: string;
   onAdvance?: (match: BracketMatch, vencedor: 1 | 2) => void;
+  onUndo?: (match: BracketMatch) => void;
   advancingMatchId?: number | null;
+  undoingMatchId?: number | null;
 }
 
 const roundLabel = (round: number, totalRounds: number) => {
@@ -63,7 +65,9 @@ const ChaveamentoBracket: React.FC<ChaveamentoBracketProps> = ({
   loading = false,
   emptyMessage = 'Nenhum chaveamento disponível para esta categoria.',
   onAdvance,
+  onUndo,
   advancingMatchId = null,
+  undoingMatchId = null,
 }) => {
   if (loading) {
     return (
@@ -222,7 +226,14 @@ const ChaveamentoBracket: React.FC<ChaveamentoBracketProps> = ({
                       !match.resultado &&
                       match.participants.every((participant) => participant.idInscricao && !participant.isBye),
                     );
+                    const canUndo = Boolean(
+                      onUndo &&
+                      match.resultado &&
+                      match.resultado !== 'BYE' &&
+                      match.resultado.startsWith('VENCEDOR'),
+                    );
                     const isAdvancing = advancingMatchId === match.id;
+                    const isUndoing = undoingMatchId === match.id;
                     return (
                       <Card key={match.id} className="shadow-sm border-gray-200">
                         <CardContent className="p-3 space-y-3">
@@ -254,11 +265,33 @@ const ChaveamentoBracket: React.FC<ChaveamentoBracketProps> = ({
                             </div>
                           )}
                           {match.resultado && match.resultado.startsWith('VENCEDOR') && (
-                            <div className="text-center">
+                            <div className="text-center space-y-2">
                               <Badge variant="outline" className="text-[11px]">
                                 <Trophy className="h-3 w-3 mr-1" />
                                 Vencedor {vencedorSlot}
                               </Badge>
+                              {canUndo && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full text-xs h-7"
+                                  onClick={() => onUndo(match)}
+                                  disabled={isUndoing}
+                                >
+                                  {isUndoing ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                      Desfazendo…
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Undo2 className="h-3 w-3 mr-1" />
+                                      Desfazer
+                                    </>
+                                  )}
+                                </Button>
+                              )}
                             </div>
                           )}
                         </CardContent>
