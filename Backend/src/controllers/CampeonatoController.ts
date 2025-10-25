@@ -129,10 +129,7 @@ export const cadastrarCampeonato = async (req: AuthRequest, res: Response) => {
             const { idAssociacao: _endId, ...enderecoData } = endereco;
             dataCreate.endereco = {
                 create: {
-                    ...enderecoData,
-                    associacao: {
-                        connect: { idAssociacao: Number(idAssociacao) }
-                    }
+                    ...enderecoData
                 }
             };
         } else if (idEndereco) {

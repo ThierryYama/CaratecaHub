@@ -7,16 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import CampeonatoForm from '@/components/campeonatos/CampeonatoForm';
 import { useQuery } from '@tanstack/react-query';
-import { fetchCampeonatosPorAssociacao, fetchCampeonatoById, getStoredAssociacao, Campeonato, Status } from '@/services/api';
+import { fetchCampeonatosPorAssociacao, fetchCampeonatoDetalhado, getStoredAssociacao, Campeonato, CampeonatoDetalhado, Status } from '@/services/api';
 
 const Campeonatos = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<Status | 'TODOS'>('TODOS');
   const [openNovo, setOpenNovo] = useState(false);
   
   const assoc = getStoredAssociacao();
@@ -28,7 +31,14 @@ const Campeonatos = () => {
     enabled: !!idAssociacao,
   });
 
-  const [detalhes, setDetalhes] = useState<Record<number, { associacaoNome?: string; bairro?: string; cidade?: string; estado?: string }>>({});
+  const [detalhes, setDetalhes] = useState<Record<number, { 
+    associacaoNome?: string; 
+    bairro?: string; 
+    cidade?: string; 
+    estado?: string;
+    categoriasCount?: number;
+    modalidadesCount?: number;
+  }>>({});
 
   useEffect(() => {
     setDetalhes({});
@@ -41,11 +51,11 @@ const Campeonatos = () => {
     let cancelado = false;
 
     async function carregarDetalhes(ids: number[]) {
-      const resultados: (Campeonato | null)[] = [];
+      const resultados: (CampeonatoDetalhado | null)[] = [];
       for (const id of ids) {
         try {
-          const full = await fetchCampeonatoById(id);
-          resultados.push(full as any);
+          const full = await fetchCampeonatoDetalhado(id);
+          resultados.push(full);
         } catch {
           resultados.push(null);
         }
@@ -56,11 +66,20 @@ const Campeonatos = () => {
         if (!full) continue;
         const assoc: any = (full as any).associacao;
         const end: any = (full as any).endereco;
+        
+        const categoriasCount = full.modalidades?.length || 0;
+        const modalidadesUnicas = new Set(
+          full.modalidades?.map(m => m.categoria?.modalidade).filter(Boolean) || []
+        );
+        const modalidadesCount = modalidadesUnicas.size;
+        
         agregado[full.idCampeonato] = {
           associacaoNome: assoc?.nome,
           bairro: end?.bairro,
           cidade: end?.cidade,
           estado: end?.estado,
+          categoriasCount,
+          modalidadesCount,
         };
       }
       if (Object.keys(agregado).length) {
@@ -77,11 +96,13 @@ const Campeonatos = () => {
 
   const filteredCampeonatos = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return campeonatos.filter(c =>
-      c.nome.toLowerCase().includes(term) ||
-      (c.descricao?.toLowerCase().includes(term) ?? false)
-    );
-  }, [campeonatos, searchTerm]);
+    return campeonatos.filter(c => {
+      const matchesSearch = c.nome.toLowerCase().includes(term) ||
+        (c.descricao?.toLowerCase().includes(term) ?? false);
+      const matchesStatus = statusFilter === 'TODOS' || c.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [campeonatos, searchTerm, statusFilter]);
 
   const getStatusColor = (status: Status) => {
     switch (status) {
@@ -151,15 +172,34 @@ const Campeonatos = () => {
               </Button>
             </div>
 
-            <div className="flex gap-4 items-center">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Buscar campeonatos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="flex gap-4 items-end">
+              <div className="flex-1 max-w-md space-y-2">
+                <Label htmlFor="search-campeonatos">Buscar</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    id="search-campeonatos"
+                    placeholder="Buscar campeonatos..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status-filter">Status</Label>
+                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as Status | 'TODOS')}>
+                  <SelectTrigger id="status-filter" className="w-[180px]">
+                    <SelectValue placeholder="Filtrar por status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TODOS">Todos</SelectItem>
+                    <SelectItem value={Status.PENDENTE}>Pendente</SelectItem>
+                    <SelectItem value={Status.EM_ANDAMENTO}>Em Andamento</SelectItem>
+                    <SelectItem value={Status.FINALIZADO}>Finalizado</SelectItem>
+                    <SelectItem value={Status.CANCELADO}>Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -197,7 +237,11 @@ const Campeonatos = () => {
                     const e: any = (c as any).endereco;
                     if (e.bairro) localStr = e.bairro; else if (e.cidade && e.estado) localStr = `${e.cidade} - ${e.estado}`;
                   }
-                  const categoriasCount = c.modalidades?.length || 0;
+                  
+                  const categoriasCount = det?.categoriasCount ?? 0;
+                  const modalidadesCount = det?.modalidadesCount ?? 0;
+                  const inscricoesCount = 0;
+                  
                   return (
                     <Card key={c.idCampeonato} className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]" onClick={() => handleCardClick(c.idCampeonato)}>
                       <CardHeader>
@@ -231,11 +275,11 @@ const Campeonatos = () => {
                                 <div className="text-xs text-muted-foreground">Categorias</div>
                               </div>
                               <div>
-                                <div className="text-lg font-semibold text-foreground">0</div>
+                                <div className="text-lg font-semibold text-foreground">{modalidadesCount}</div>
                                 <div className="text-xs text-muted-foreground">Modalidades</div>
                               </div>
                               <div>
-                                <div className="text-lg font-semibold text-foreground">0</div>
+                                <div className="text-lg font-semibold text-foreground">{inscricoesCount}</div>
                                 <div className="text-xs text-muted-foreground">Inscrições</div>
                               </div>
                             </div>

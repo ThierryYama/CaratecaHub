@@ -2,19 +2,25 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { register, RegisterInput } from '@/services/api';
-import { fetchAddressByCep, CepApiError } from '@/services/cepApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import EstadoSelect from '@/components/ui/estado-select';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, CheckCircle2 } from 'lucide-react';
+import { MaskedInput } from '@/components/ui/masked-input';
+import { validarCNPJ, validarEmail, validarTelefone, validarCEP, buscarEnderecoPorCEP, validarCNPJAPI, validarSenha } from '@/lib/validations';
+import { removerMascara } from '@/lib/masks';
 
 const Register = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [cepLoading, setCepLoading] = useState(false);
+  const [cnpjLoading, setCnpjLoading] = useState(false);
+  const [cnpjValidado, setCnpjValidado] = useState(false);
+  const [cnpjInfo, setCnpjInfo] = useState<{razao_social: string; situacao: string} | null>(null);
 
   const [nome, setNome] = useState('');
   const [cnpj, setCnpj] = useState('');
@@ -32,10 +38,13 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [mostrarRequisitos, setMostrarRequisitos] = useState(false);
 
   const registerMutation = useMutation({
     mutationFn: (data: RegisterInput) => register(data),
     onSuccess: () => {
+      // Exibe uma mensagem de sucesso apropriada para registro de conta
+      alert('Conta criada com sucesso! Você será redirecionado para a página inicial.');
       navigate('/');
     },
     onError: (err: any) => {
@@ -44,20 +53,20 @@ const Register = () => {
   });
 
   const fetchAddressByCepHandler = async (cepValue: string) => {
-    const cleanCep = cepValue.replace(/\D/g, '');
+    const cleanCep = removerMascara(cepValue);
     if (cleanCep.length !== 8) return;
 
     setCepLoading(true);
     setError('');
     
     try {
-      const data = await fetchAddressByCep(cepValue);
+      const data = await buscarEnderecoPorCEP(cepValue);
       setRua(data.logradouro || '');
       setBairro(data.bairro || '');
       setCidade(data.localidade || '');
       setEstado(data.uf || '');
     } catch (err) {
-      if (err instanceof CepApiError) {
+      if (err instanceof Error) {
         setError(err.message);
       } else {
         setError('Erro ao buscar CEP. Verifique sua conexão.');
@@ -69,8 +78,61 @@ const Register = () => {
 
   const handleCepChange = (value: string) => {
     setCep(value);
-    if (value.replace(/\D/g, '').length === 8) {
+    if (removerMascara(value).length === 8) {
       fetchAddressByCepHandler(value);
+    }
+  };
+
+  const handleCnpjChange = (value: string) => {
+    setCnpj(value);
+    // Reset validação quando CNPJ muda
+    setCnpjValidado(false);
+    setCnpjInfo(null);
+  };
+
+  const validarCNPJNaReceita = async () => {
+    if (!cnpj) {
+      setError('Digite um CNPJ primeiro');
+      return;
+    }
+
+    // Validação local primeiro
+    if (!validarCNPJ(cnpj)) {
+      setError('CNPJ inválido. Verifique os dígitos.');
+      return;
+    }
+
+    setCnpjLoading(true);
+    setError('');
+
+    try {
+      const resultado = await validarCNPJAPI(cnpj);
+      
+      // Verificar se CNPJ está ativo
+      if (resultado.situacao.toLowerCase().includes('baixada') || 
+          resultado.situacao.toLowerCase().includes('suspensa') ||
+          resultado.situacao.toLowerCase().includes('inapta')) {
+        setError(`CNPJ encontrado mas está: ${resultado.situacao}. Não é possível cadastrar.`);
+        setCnpjValidado(false);
+        setCnpjInfo(null);
+      } else {
+        setCnpjValidado(true);
+        setCnpjInfo({
+          razao_social: resultado.razao_social,
+          situacao: resultado.situacao
+        });
+        setError('');
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Erro ao validar CNPJ na Receita Federal. Tente novamente.');
+      }
+      setCnpjValidado(false);
+      setCnpjInfo(null);
+    } finally {
+      setCnpjLoading(false);
     }
   };
 
@@ -81,10 +143,30 @@ const Register = () => {
         setError('Preencha os campos obrigatórios: Nome, CNPJ e Telefone');
         return;
       }
+      // Validar CNPJ
+      if (!validarCNPJ(cnpj)) {
+        setError('CNPJ inválido. Verifique os dígitos.');
+        return;
+      }
+      // Verificar se CNPJ foi validado na Receita
+      if (!cnpjValidado) {
+        setError('Valide o CNPJ na Receita Federal antes de prosseguir');
+        return;
+      }
+      // Validar telefone
+      if (!validarTelefone(telefone)) {
+        setError('Telefone inválido. Use o formato (00) 00000-0000');
+        return;
+      }
       setStep(2);
     } else if (step === 2) {
       if (!rua || !numero || !bairro || !cidade || !estado || !cep) {
         setError('Preencha todos os campos obrigatórios do endereço');
+        return;
+      }
+      // Validar CEP
+      if (!validarCEP(cep)) {
+        setError('CEP inválido. Use o formato 00000-000');
         return;
       }
       setStep(3);
@@ -103,19 +185,26 @@ const Register = () => {
       setError('Preencha todos os campos');
       return;
     }
+    // Validar email
+    if (!validarEmail(email)) {
+      setError('E-mail inválido');
+      return;
+    }
     if (senha !== confirmarSenha) {
       setError('As senhas não coincidem');
       return;
     }
-    if (senha.length < 6) {
-      setError('A senha deve ter no mínimo 6 caracteres');
+    // Validar senha com novos critérios
+    const validacaoSenha = validarSenha(senha);
+    if (!validacaoSenha.isValid) {
+      setError(validacaoSenha.mensagem || 'Senha inválida');
       return;
     }
 
     const payload: RegisterInput = {
       nome,
-      cnpj,
-      telefone,
+      cnpj: removerMascara(cnpj), // Remove máscara antes de enviar
+      telefone: removerMascara(telefone),
       email,
       senha,
       sigla: sigla || undefined,
@@ -126,7 +215,7 @@ const Register = () => {
         bairro,
         cidade,
         estado,
-        cep,
+        cep: removerMascara(cep),
       },
     };
 
@@ -173,29 +262,66 @@ const Register = () => {
                   onChange={(e) => setNome(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cnpj">
-                    CNPJ <span className="text-red-600">*</span>
-                  </Label>
-                  <Input
-                    id="cnpj"
-                    placeholder="00.000.000/0000-00"
-                    value={cnpj}
-                    onChange={(e) => setCnpj(e.target.value)}
-                  />
+              
+              <div className="space-y-2">
+                <Label htmlFor="cnpj">
+                  CNPJ <span className="text-red-600">*</span>
+                </Label>
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <MaskedInput
+                      id="cnpj"
+                      mask="cnpj"
+                      placeholder="00.000.000/0000-00"
+                      value={cnpj}
+                      onChange={handleCnpjChange}
+                      disabled={cnpjLoading}
+                    />
+                    {cnpjValidado && (
+                      <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-600" />
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={validarCNPJNaReceita}
+                    disabled={cnpjLoading || !cnpj || cnpjValidado}
+                    variant={cnpjValidado ? "outline" : "default"}
+                    className={cnpjValidado ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100" : ""}
+                  >
+                    {cnpjLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Validando...
+                      </>
+                    ) : cnpjValidado ? (
+                      <>
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Validado
+                      </>
+                    ) : (
+                      'Validar'
+                    )}
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="telefone">
-                    Telefone <span className="text-red-600">*</span>
-                  </Label>
-                  <Input
-                    id="telefone"
-                    placeholder="(11) 99999-9999"
-                    value={telefone}
-                    onChange={(e) => setTelefone(e.target.value)}
-                  />
-                </div>
+                {cnpjInfo && cnpjValidado && (
+                  <div className="text-sm bg-green-50 border border-green-200 rounded-md p-3 mt-2">
+                    <p className="font-semibold text-green-800">{cnpjInfo.razao_social}</p>
+                    <p className="text-green-600">Situação: {cnpjInfo.situacao}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="telefone">
+                  Telefone <span className="text-red-600">*</span>
+                </Label>
+                <MaskedInput
+                  id="telefone"
+                  mask="telefone"
+                  placeholder="(11) 99999-9999"
+                  value={telefone}
+                  onChange={setTelefone}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sigla">Sigla (opcional)</Label>
@@ -278,24 +404,19 @@ const Register = () => {
                   <Label htmlFor="estado">
                     Estado <span className="text-red-600">*</span>
                   </Label>
-                  <Input
-                    id="estado"
-                    placeholder="UF"
-                    value={estado}
-                    onChange={(e) => setEstado(e.target.value.toUpperCase())}
-                    maxLength={2}
-                  />
+                  <EstadoSelect id="estado" value={estado} onChange={setEstado} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cep">
                     CEP <span className="text-red-600">*</span>
                   </Label>
                   <div className="relative">
-                    <Input
+                    <MaskedInput
                       id="cep"
+                      mask="cep"
                       placeholder="00000-000"
                       value={cep}
-                      onChange={(e) => handleCepChange(e.target.value)}
+                      onChange={handleCepChange}
                       disabled={cepLoading}
                     />
                     {cepLoading && (
@@ -323,12 +444,12 @@ const Register = () => {
                 <Label htmlFor="email">
                   E-mail <span className="text-red-600">*</span>
                 </Label>
-                <Input
+                <MaskedInput
                   id="email"
-                  type="email"
+                  mask="email"
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={setEmail}
                   disabled={registerMutation.isPending}
                 />
               </div>
@@ -342,8 +463,26 @@ const Register = () => {
                   placeholder="Mínimo 6 caracteres"
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
+                  onFocus={() => setMostrarRequisitos(true)}
+                  onBlur={() => setMostrarRequisitos(false)}
                   disabled={registerMutation.isPending}
                 />
+                {mostrarRequisitos && (
+                  <div className="text-xs bg-blue-50 border border-blue-200 rounded-md p-3 space-y-1">
+                    <p className="font-semibold text-blue-800 mb-2">A senha deve conter:</p>
+                    <div className="space-y-1">
+                      <p className={senha.length >= 6 ? 'text-green-600' : 'text-gray-600'}>
+                        {senha.length >= 6 ? '✓' : '○'} Mínimo de 6 caracteres
+                      </p>
+                      <p className={/\d/.test(senha) ? 'text-green-600' : 'text-gray-600'}>
+                        {/\d/.test(senha) ? '✓' : '○'} Pelo menos um número
+                      </p>
+                      <p className={/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(senha) ? 'text-green-600' : 'text-gray-600'}>
+                        {/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(senha) ? '✓' : '○'} Pelo menos um caractere especial (!@#$%...)
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmarSenha">

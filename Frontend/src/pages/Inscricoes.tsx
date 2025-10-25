@@ -40,11 +40,12 @@ const Inscricoes: React.FC = () => {
   const [tab, setTab] = useState<'atletas' | 'equipes'>('atletas');
   const [selectedModalidadeId, setSelectedModalidadeId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; onConfirm?: () => void }>({ open: false });
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const params = useParams<{ id?: string }>();
-  const persistedId = typeof window !== 'undefined' ? localStorage.getItem('currentCampeonatoId') : undefined;
+  const persistedId = typeof globalThis === 'undefined' ? undefined : globalThis.localStorage?.getItem('currentCampeonatoId');
   const campeonatoId = useMemo(() => {
     if (params.id) return Number(params.id);
     if (persistedId) return Number(persistedId);
@@ -99,6 +100,68 @@ const Inscricoes: React.FC = () => {
     queryFn: () => fetchInscricoesEquipePorIdDeCampeonatoModalidade(Number(selectedModalidadeId)),
     enabled: tab === 'equipes' && selectedModalidadeId != null,
   });
+
+  // Hook para buscar todas as inscrições de atletas por categoria
+  const allInscricoesAtletas = useQuery({
+    queryKey: ['allInscricoesAtletas', campeonatoId],
+    queryFn: async () => {
+      if (!campeonatoId) return [];
+      const modalidades = modalidadesIndividuais;
+      const promises = modalidades.map(m => 
+        fetchInscricoesAtletaPorIdDeCampeonatoModalidade(m.idCampeonatoModalidade)
+          .then(inscricoes => ({ idModalidade: m.idCampeonatoModalidade, inscricoes }))
+          .catch(() => ({ idModalidade: m.idCampeonatoModalidade, inscricoes: [] }))
+      );
+      return Promise.all(promises);
+    },
+    enabled: !!campeonatoId,
+  });
+
+  // Hook para buscar todas as inscrições de equipes por categoria
+  const allInscricoesEquipes = useQuery({
+    queryKey: ['allInscricoesEquipes', campeonatoId],
+    queryFn: async () => {
+      if (!campeonatoId) return [];
+      const modalidades = modalidadesEquipe;
+      const promises = modalidades.map(m => 
+        fetchInscricoesEquipePorIdDeCampeonatoModalidade(m.idCampeonatoModalidade)
+          .then(inscricoes => ({ idModalidade: m.idCampeonatoModalidade, inscricoes }))
+          .catch(() => ({ idModalidade: m.idCampeonatoModalidade, inscricoes: [] }))
+      );
+      return Promise.all(promises);
+    },
+    enabled: !!campeonatoId,
+  });
+
+  // Verifica se todas as categorias têm pelo menos 2 inscritos
+  const validacaoInscricoes = useMemo(() => {
+    const categoriasInsuficientes: string[] = [];
+    
+    // Valida categorias de atletas
+    (allInscricoesAtletas.data ?? []).forEach(({ idModalidade, inscricoes }) => {
+      const modalidade = modalidadesIndividuais.find(m => m.idCampeonatoModalidade === idModalidade);
+      const inscritos = (inscricoes as InscricaoAtleta[]).filter(i => i.status === StatusInscricao.INSCRITO);
+      if (inscritos.length < 2 && modalidade) {
+        const label = `${modalidade.categoria?.nome || ''} · ${modalidade.categoria?.genero || ''} · ${modalidadeLabel(modalidade.categoria?.modalidade)}`;
+        categoriasInsuficientes.push(label);
+      }
+    });
+
+    // Valida categorias de equipes
+    (allInscricoesEquipes.data ?? []).forEach(({ idModalidade, inscricoes }) => {
+      const modalidade = modalidadesEquipe.find(m => m.idCampeonatoModalidade === idModalidade);
+      const inscritos = (inscricoes as InscricaoEquipe[]).filter(i => i.status === StatusInscricao.INSCRITO);
+      if (inscritos.length < 2 && modalidade) {
+        const label = `${modalidade.categoria?.nome || ''} · ${modalidade.categoria?.genero || ''} · ${modalidadeLabel(modalidade.categoria?.modalidade)}`;
+        categoriasInsuficientes.push(label);
+      }
+    });
+
+    return {
+      podeConfirmar: categoriasInsuficientes.length === 0,
+      categoriasInsuficientes,
+    };
+  }, [allInscricoesAtletas.data, allInscricoesEquipes.data, modalidadesIndividuais, modalidadesEquipe]);
 
   const inscreverAtleta = useMutation({
     mutationFn: async (vars: { idAtleta: number; idCampeonatoModalidade: number }) => {
@@ -437,11 +500,16 @@ const Inscricoes: React.FC = () => {
                           variant="outline"
                           className="text-red-600 hover:text-red-700 border-red-600"
                           onClick={() => {
-                            if (tab === 'atletas') {
-                              desvincularInscricaoAtleta.mutate(insc.idInscricaoAtleta);
-                            } else {
-                              desvincularInscricaoEquipe.mutate(insc.idInscricaoEquipe);
-                            }
+                            setConfirmDialog({
+                              open: true,
+                              onConfirm: () => {
+                                if (tab === 'atletas') {
+                                  desvincularInscricaoAtleta.mutate(insc.idInscricaoAtleta);
+                                } else {
+                                  desvincularInscricaoEquipe.mutate(insc.idInscricaoEquipe);
+                                }
+                              }
+                            });
                           }}
                         >
                           Remover
@@ -460,7 +528,7 @@ const Inscricoes: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-  <Sidebar onItemClick={handleMenuItemClick} />
+      <Sidebar onItemClick={handleMenuItemClick} />
       <div className="flex-1 flex flex-col">
         <Header onToggleSidebar={toggleSidebar} />
         <main className="flex-1 p-6">
@@ -475,25 +543,75 @@ const Inscricoes: React.FC = () => {
             {renderList}
             {renderInscritos}
           </div>
+          {!validacaoInscricoes.podeConfirmar && validacaoInscricoes.categoriasInsuficientes.length > 0 && (
+            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                <div>
+                  <h4 className="font-semibold text-red-900 mb-2">Categorias com inscrições insuficientes</h4>
+                  <p className="text-sm text-red-700 mb-2">
+                    Cada categoria precisa ter pelo menos 2 participantes inscritos para confirmar as inscrições.
+                  </p>
+                  <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+                    {validacaoInscricoes.categoriasInsuficientes.map((cat, idx) => (
+                      <li key={idx}>{cat}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="flex justify-center gap-3 mt-6">
             <Button
               className="bg-green-600 hover:bg-green-700 px-8"
               onClick={() => {
                 refetchCamp();
                 refetchEtapas();
+                allInscricoesAtletas.refetch();
+                allInscricoesEquipes.refetch();
               }}
             >
               Atualizar Listas
             </Button>
             <Button
               className="bg-blue-600 hover:bg-blue-700 px-8"
-              disabled={!!etapasStatus?.inscricoesConfirmadas || confirmarInscricoesMutation.isPending}
-              title={etapasStatus?.inscricoesConfirmadas ? 'Inscrições já confirmadas' : ''}
-              onClick={() => confirmarInscricoesMutation.mutate()}
+              disabled={!!etapasStatus?.inscricoesConfirmadas || confirmarInscricoesMutation.isPending || !validacaoInscricoes.podeConfirmar}
+              title={
+                etapasStatus?.inscricoesConfirmadas
+                  ? 'Inscrições já confirmadas'
+                  : !validacaoInscricoes.podeConfirmar
+                    ? 'Cada categoria precisa ter pelo menos 2 participantes inscritos.'
+                    : undefined
+              }
+              onClick={() => {
+                if (etapasStatus?.inscricoesConfirmadas) return;
+                if (!validacaoInscricoes.podeConfirmar) {
+                  toast({
+                    title: 'Inscrições insuficientes',
+                    description: 'Cada categoria precisa ter pelo menos 2 participantes inscritos.',
+                    variant: 'destructive'
+                  });
+                  return;
+                }
+                setConfirmDialog({
+                  open: true,
+                  onConfirm: () => confirmarInscricoesMutation.mutate()
+                });
+              }}
             >
               {confirmarInscricoesMutation.isPending ? 'Confirmando...' : 'Confirmar Inscrições'}
             </Button>
           </div>
+          <ConfirmDialog
+            open={confirmDialog.open}
+            title="Confirmação"
+            description="Tem certeza que deseja realizar esta ação?"
+            onCancel={() => setConfirmDialog({ open: false })}
+            onConfirm={() => {
+              confirmDialog.onConfirm?.();
+              setConfirmDialog({ open: false });
+            }}
+          />
         </main>
       </div>
     </div>
@@ -501,6 +619,35 @@ const Inscricoes: React.FC = () => {
 };
 
 export default Inscricoes;
+
+// Simple confirmation dialog component
+function ConfirmDialog({
+  open,
+  title,
+  description,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  title?: string;
+  description?: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+      <div className="bg-white rounded-lg shadow-lg p-6 min-w-[320px]">
+        <h2 className="text-lg font-semibold mb-2">{title || 'Confirmação'}</h2>
+        <p className="mb-4">{description || 'Tem certeza que deseja realizar esta ação?'}</p>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onCancel}>Cancelar</Button>
+          <Button className="bg-red-600 hover:bg-red-700" onClick={onConfirm}>Confirmar</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CategorySearchSelect({
   options,

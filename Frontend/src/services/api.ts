@@ -17,6 +17,23 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('associacao');
+      localStorage.removeItem('currentCampeonatoId');
+      
+      const currentPath = globalThis.location.pathname;
+      if (currentPath !== '/login' && currentPath !== '/register') {
+        globalThis.location.href = '/login';
+      }
+    }
+    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+  }
+);
+
 
 export interface Categoria {
   idCategoria: number;
@@ -311,6 +328,11 @@ export const fetchCampeonatoDetalhado = async (id: number): Promise<CampeonatoDe
   return response.data;
 };
 
+export const fetchCampeonatoDetalhadoPublico = async (id: number): Promise<CampeonatoDetalhado> => {
+  const response = await api.get(`/listarCampeonatoPublico/${id}`);
+  return response.data;
+};
+
 export interface CampeonatoModalidade {
   idCampeonatoModalidade: number;
   idCampeonato: number;
@@ -509,6 +531,16 @@ export const avancarPartidaEquipe = async (idPartida: number, vencedor: 1 | 2): 
   return response.data;
 };
 
+export const desfazerPartidaAtleta = async (idPartida: number): Promise<{ message: string }> => {
+  const response = await api.post('/chaveamento/desfazer/atleta', { idPartida });
+  return response.data;
+};
+
+export const desfazerPartidaEquipe = async (idPartida: number): Promise<{ message: string }> => {
+  const response = await api.post('/chaveamento/desfazer/equipe', { idPartida });
+  return response.data;
+};
+
 export interface Associacao {
   idAssociacao: number;
   nome: string;
@@ -621,4 +653,4 @@ export const deletePerfil = async (): Promise<void> => {
   logout();
 };
 
-export default api
+export default api;

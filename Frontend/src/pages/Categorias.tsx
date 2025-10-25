@@ -33,14 +33,19 @@ const Categorias = () => {
   const [filtro, setFiltro] = useState('');
   const [filtroSexo, setFiltroSexo] = useState<'todos' | 'Masculino' | 'Feminino' | 'Outro' | 'Misto'>('todos');
   const [filtroModalidade, setFiltroModalidade] = useState<'todos' | Modalidade>('todos');
+  const [errosValidacao, setErrosValidacao] = useState<{
+    idade?: string;
+    graduacao?: string;
+    peso?: string;
+  }>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState<CategoriaInput>({
     nome: '',
     descricao: '',
-    faixaIdadeMin: 0,
-    faixaIdadeMax: 0,
+    faixaIdadeMin: 1,
+    faixaIdadeMax: 1,
     genero: 'Masculino',
     modalidade: Modalidade.KUMITE,
     graduacaoMin: '',
@@ -53,6 +58,72 @@ const Categorias = () => {
     '10º Kyu', '9º Kyu', '8º Kyu', '7º Kyu', '6º Kyu', '5º Kyu', '4º Kyu', '3º Kyu', '2º Kyu', '1º Kyu',
     '1º Dan', '2º Dan', '3º Dan', '4º Dan', '5º Dan', '6º Dan', '7º Dan', '8º Dan', '9º Dan', '10º Dan'
   ];
+
+  // Função para obter índice da graduação (menor índice = graduação menor)
+  const getGraduacaoIndex = (graduacao: string): number => {
+    return graduacoes.indexOf(graduacao);
+  };
+
+  // Função para validar campos
+  const validarCampos = (): boolean => {
+    const erros: typeof errosValidacao = {};
+    const camposFaltando: string[] = [];
+    let valido = true;
+
+    if (!formData.nome.trim()) {
+      camposFaltando.push('Nome');
+      valido = false;
+    }
+
+    if (formData.faixaIdadeMin <= 0 || formData.faixaIdadeMax <= 0) {
+      erros.idade = 'As idades devem ser maiores que 0';
+      valido = false;
+    } else if (formData.faixaIdadeMin > formData.faixaIdadeMax) {
+      erros.idade = 'A idade mínima não pode ser maior que a idade máxima';
+      valido = false;
+    }
+
+    if (!formData.graduacaoMin || !formData.graduacaoMax) {
+      camposFaltando.push('Graduação Mínima e Máxima');
+      valido = false;
+    } else {
+      const indexMin = getGraduacaoIndex(formData.graduacaoMin);
+      const indexMax = getGraduacaoIndex(formData.graduacaoMax);
+      if (indexMin !== -1 && indexMax !== -1 && indexMin > indexMax) {
+        erros.graduacao = 'A graduação mínima não pode ser maior que a graduação máxima';
+        valido = false;
+      }
+    }
+
+    const temPesoMin = formData.pesoMin !== undefined && formData.pesoMin !== null && formData.pesoMin.toString() !== '';
+    const temPesoMax = formData.pesoMax !== undefined && formData.pesoMax !== null && formData.pesoMax.toString() !== '';
+    
+    if (temPesoMin || temPesoMax) {
+      if (temPesoMin && Number(formData.pesoMin) <= 0) {
+        erros.peso = 'O peso mínimo deve ser maior que 0';
+        valido = false;
+      }
+      if (temPesoMax && Number(formData.pesoMax) <= 0) {
+        erros.peso = 'O peso máximo deve ser maior que 0';
+        valido = false;
+      }
+      if (temPesoMin && temPesoMax && Number(formData.pesoMin) > Number(formData.pesoMax)) {
+        erros.peso = 'O peso mínimo não pode ser maior que o peso máximo';
+        valido = false;
+      }
+    }
+
+    if (camposFaltando.length > 0) {
+      toast({
+        title: 'Campos obrigatórios faltando',
+        description: `Por favor, preencha: ${camposFaltando.join(', ')}.`,
+        variant: 'destructive',
+      });
+    }
+
+    setErrosValidacao(erros);
+    return valido;
+  };
 
   const { data: categorias = [], isLoading, isError } = useQuery<Categoria[]>({
     queryKey: ['categorias'],
@@ -101,8 +172,8 @@ const Categorias = () => {
     setFormData({
       nome: '',
       descricao: '',
-      faixaIdadeMin: 0,
-      faixaIdadeMax: 0,
+      faixaIdadeMin: 1,
+      faixaIdadeMax: 1,
       genero: 'Masculino',
       modalidade: Modalidade.KUMITE,
       graduacaoMin: '',
@@ -111,10 +182,15 @@ const Categorias = () => {
       pesoMax: undefined,
     });
     setCategoriaEditando(null);
+    setErrosValidacao({});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validarCampos()) {
+      return;
+    }
 
     const categoriaData: CategoriaInput = {
       ...formData,
@@ -150,7 +226,9 @@ const Categorias = () => {
   };
 
   const handleDelete = (id: number) => {
-    deleteMutation.mutate(id);
+    if (globalThis.confirm('Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita.')) {
+      deleteMutation.mutate(id);
+    }
   };
 
   const categoriasFiltradas = categorias.filter(categoria => {
@@ -257,8 +335,14 @@ const Categorias = () => {
                           <Input
                             id="idadeMinima"
                             type="number"
+                            min="1"
+                            max="150"
                             value={formData.faixaIdadeMin}
-                            onChange={(e) => setFormData(prev => ({ ...prev, faixaIdadeMin: Number(e.target.value) }))}
+                            onChange={(e) => {
+                              setFormData(prev => ({ ...prev, faixaIdadeMin: Number(e.target.value) }));
+                              setErrosValidacao(prev => ({ ...prev, idade: undefined }));
+                            }}
+                            className={errosValidacao.idade ? 'border-red-500' : ''}
                             required
                           />
                         </div>
@@ -267,18 +351,34 @@ const Categorias = () => {
                           <Input
                             id="idadeMaxima"
                             type="number"
+                            min="1"
+                            max="150"
                             value={formData.faixaIdadeMax}
-                            onChange={(e) => setFormData(prev => ({ ...prev, faixaIdadeMax: Number(e.target.value) }))}
+                            onChange={(e) => {
+                              setFormData(prev => ({ ...prev, faixaIdadeMax: Number(e.target.value) }));
+                              setErrosValidacao(prev => ({ ...prev, idade: undefined }));
+                            }}
+                            className={errosValidacao.idade ? 'border-red-500' : ''}
                             required
                           />
                         </div>
                       </div>
+                      {errosValidacao.idade && (
+                        <p className="text-sm text-red-600 -mt-2">{errosValidacao.idade}</p>
+                      )}
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="graduacaoMinima">Graduação Mínima</Label>
-                          <Select value={formData.graduacaoMin} onValueChange={(value) => setFormData(prev => ({ ...prev, graduacaoMin: value }))}>
-                            <SelectTrigger>
+                          <Label htmlFor="graduacaoMinima">Graduação Mínima <span className="text-red-500">*</span></Label>
+                          <Select 
+                            value={formData.graduacaoMin} 
+                            onValueChange={(value) => {
+                              setFormData(prev => ({ ...prev, graduacaoMin: value }));
+                              setErrosValidacao(prev => ({ ...prev, graduacao: undefined }));
+                            }}
+                            required
+                          >
+                            <SelectTrigger className={errosValidacao.graduacao ? 'border-red-500' : ''}>
                               <SelectValue placeholder="Selecione a graduação mínima" />
                             </SelectTrigger>
                             <SelectContent>
@@ -287,9 +387,16 @@ const Categorias = () => {
                           </Select>
                         </div>
                         <div>
-                          <Label htmlFor="graduacaoMaxima">Graduação Máxima</Label>
-                          <Select value={formData.graduacaoMax} onValueChange={(value) => setFormData(prev => ({ ...prev, graduacaoMax: value }))}>
-                            <SelectTrigger>
+                          <Label htmlFor="graduacaoMaxima">Graduação Máxima <span className="text-red-500">*</span></Label>
+                          <Select 
+                            value={formData.graduacaoMax} 
+                            onValueChange={(value) => {
+                              setFormData(prev => ({ ...prev, graduacaoMax: value }));
+                              setErrosValidacao(prev => ({ ...prev, graduacao: undefined }));
+                            }}
+                            required
+                          >
+                            <SelectTrigger className={errosValidacao.graduacao ? 'border-red-500' : ''}>
                               <SelectValue placeholder="Selecione a graduação máxima" />
                             </SelectTrigger>
                             <SelectContent>
@@ -298,6 +405,9 @@ const Categorias = () => {
                           </Select>
                         </div>
                       </div>
+                      {errosValidacao.graduacao && (
+                        <p className="text-sm text-red-600 -mt-2">{errosValidacao.graduacao}</p>
+                      )}
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -306,8 +416,13 @@ const Categorias = () => {
                             id="pesoMin"
                             type="number"
                             step="0.1"
+                            min="0.1"
                             value={formData.pesoMin ?? ''}
-                            onChange={(e) => setFormData(prev => ({ ...prev, pesoMin: e.target.value === '' ? undefined : Number(e.target.value) }))}
+                            onChange={(e) => {
+                              setFormData(prev => ({ ...prev, pesoMin: e.target.value === '' ? undefined : Number(e.target.value) }));
+                              setErrosValidacao(prev => ({ ...prev, peso: undefined }));
+                            }}
+                            className={errosValidacao.peso ? 'border-red-500' : ''}
                             placeholder="Deixe em branco se não aplicável"
                           />
                         </div>
@@ -317,12 +432,20 @@ const Categorias = () => {
                             id="pesoMax"
                             type="number"
                             step="0.1"
+                            min="0.1"
                             value={formData.pesoMax ?? ''}
-                            onChange={(e) => setFormData(prev => ({ ...prev, pesoMax: e.target.value === '' ? undefined : Number(e.target.value) }))}
+                            onChange={(e) => {
+                              setFormData(prev => ({ ...prev, pesoMax: e.target.value === '' ? undefined : Number(e.target.value) }));
+                              setErrosValidacao(prev => ({ ...prev, peso: undefined }));
+                            }}
+                            className={errosValidacao.peso ? 'border-red-500' : ''}
                             placeholder="Deixe em branco se não aplicável"
                           />
                         </div>
                       </div>
+                      {errosValidacao.peso && (
+                        <p className="text-sm text-red-600 -mt-2">{errosValidacao.peso}</p>
+                      )}
 
                       <div className="flex justify-end gap-2">
                         <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -422,7 +545,8 @@ const Categorias = () => {
                             ? 'bg-blue-100 text-blue-800'
                             : 'bg-orange-100 text-orange-800'
                           }`}>
-                          {categoria.modalidade.replace('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
+                          {/* eslint-disable-next-line prefer-regex-literals */}
+                          {categoria.modalidade.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
                         </span>
                       </TableCell>
                       <TableCell>{categoria.genero}</TableCell>

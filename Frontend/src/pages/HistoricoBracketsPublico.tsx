@@ -1,14 +1,15 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Trophy,
   History,
-  Filter,
   Eye,
   GitBranch,
   Loader2,
   Crown,
+  ArrowLeft,
+  Lock,
 } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
@@ -42,12 +43,13 @@ import { useToast } from '@/hooks/use-toast';
 import {
   CampeonatoDetalhado,
   CampeonatoModalidadeWithCategoria,
-  fetchCampeonatoDetalhado,
+  fetchCampeonatoDetalhadoPublico,
   fetchPartidasAtletaPorCategoria,
   fetchPartidasEquipePorCategoria,
   Modalidade,
   PartidaAtletaResponse,
   PartidaEquipeResponse,
+  Status,
 } from '@/services/api';
 
 const isEquipeModalidade = (modalidade?: Modalidade) =>
@@ -225,51 +227,94 @@ const normalizeMatches = (
   };
 };
 
-const HistoricoBrackets: React.FC = () => {
+const HistoricoBracketsPublico: React.FC = () => {
   const { isCollapsed: isSidebarCollapsed, setCollapsed: setSidebarCollapsed } = useSidebar();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const params = useParams<{ id?: string }>();
-  const persistedId = typeof window !== 'undefined' ? localStorage.getItem('currentCampeonatoId') ?? undefined : undefined;
   const campeonatoId = useMemo(() => {
     if (params.id) return Number(params.id);
-    if (persistedId) return Number(persistedId);
     return undefined;
-  }, [params.id, persistedId]);
+  }, [params.id]);
 
   const {
     data: campeonatoDetalhado,
-    isFetching: modalidadesFetching,
     isLoading: campeonatoLoading,
     error: campeonatoError,
   } = useQuery<CampeonatoDetalhado>({
-    queryKey: ['campeonato-detalhado', campeonatoId],
-    queryFn: () => fetchCampeonatoDetalhado(campeonatoId!),
+    queryKey: ['campeonato-detalhado-publico', campeonatoId],
+    queryFn: () => fetchCampeonatoDetalhadoPublico(campeonatoId!),
     enabled: !!campeonatoId,
     staleTime: 60 * 1000,
   });
 
   const categorias = useMemo(() => {
     if (!campeonatoDetalhado?.modalidades) return [] as CampeonatoModalidadeWithCategoria[];
-    return [...campeonatoDetalhado.modalidades].sort((a, b) =>
-      (a.categoria?.nome ?? '').localeCompare(b.categoria?.nome ?? ''),
-    );
+    
+    const isFinalizado = campeonatoDetalhado.status === Status.FINALIZADO;
+    
+    if (isFinalizado) {
+      return [...campeonatoDetalhado.modalidades]
+        .sort((a, b) => (a.categoria?.nome ?? '').localeCompare(b.categoria?.nome ?? ''));
+    }
+    
+    return [...campeonatoDetalhado.modalidades]
+      .sort((a, b) => (a.categoria?.nome ?? '').localeCompare(b.categoria?.nome ?? ''));
   }, [campeonatoDetalhado]);
 
+  const [categoriasComCampeao, setCategoriasComCampeao] = useState<Set<number>>(new Set());
   const [selectedModalidade, setSelectedModalidade] = useState<string>('');
   const [isBracketDialogOpen, setBracketDialogOpen] = useState(false);
   const [selectedBracket, setSelectedBracket] = useState<NormalizedBracket | null>(null);
   const [bracketLoading, setBracketLoading] = useState(false);
 
+  const isCampeonatoFinalizado = campeonatoDetalhado?.status === Status.FINALIZADO;
+
+  useQuery({
+    queryKey: ['verificar-campeoes-publico', campeonatoId],
+    queryFn: async () => {
+      if (!categorias.length || isCampeonatoFinalizado) return new Set<number>();
+      
+      const results = await Promise.all(
+        categorias.map(async (modalidade) => {
+          try {
+            const equipe = isEquipeModalidade(modalidade.categoria?.modalidade);
+            const partidas = equipe
+              ? await fetchPartidasEquipePorCategoria(modalidade.idCampeonatoModalidade)
+              : await fetchPartidasAtletaPorCategoria(modalidade.idCampeonatoModalidade);
+            
+            const bracket = normalizeMatches(partidas, equipe ? 'EQUIPE' : 'ATLETA');
+            return { id: modalidade.idCampeonatoModalidade, temCampeao: !!bracket?.champion };
+          } catch {
+            return { id: modalidade.idCampeonatoModalidade, temCampeao: false };
+          }
+        })
+      );
+      
+      const comCampeao = new Set(
+        results.filter(r => r.temCampeao).map(r => r.id)
+      );
+      setCategoriasComCampeao(comCampeao);
+      return comCampeao;
+    },
+    enabled: !!campeonatoId && categorias.length > 0 && !isCampeonatoFinalizado,
+  });
+
+  const categoriasDisponiveis = useMemo(() => {
+    if (isCampeonatoFinalizado) return categorias;
+    return categorias.filter(cat => categoriasComCampeao.has(cat.idCampeonatoModalidade));
+  }, [categorias, categoriasComCampeao, isCampeonatoFinalizado]);
+
   const selectedCategoria = useMemo(() => {
-    return categorias.find(cat => cat.idCampeonatoModalidade.toString() === selectedModalidade);
-  }, [categorias, selectedModalidade]);
+    return categoriasDisponiveis.find(cat => cat.idCampeonatoModalidade.toString() === selectedModalidade);
+  }, [categoriasDisponiveis, selectedModalidade]);
 
   const {
     data: bracketsData,
     isLoading: bracketsLoading,
   } = useQuery<PartidaAtletaResponse[] | PartidaEquipeResponse[]>({
-    queryKey: ['historico-brackets', selectedModalidade],
+    queryKey: ['historico-brackets-publico', selectedModalidade],
     queryFn: async () => {
       if (!selectedCategoria) return [];
       const equipe = isEquipeModalidade(selectedCategoria.categoria?.modalidade);
@@ -287,13 +332,7 @@ const HistoricoBrackets: React.FC = () => {
     return normalizeMatches(bracketsData, type);
   }, [bracketsData, selectedCategoria]);
 
-  const chaveamentosGerados = useMemo(() => {
-    // Conta apenas se a categoria selecionada tem chaveamento gerado
-    if (!normalizedBracket || !normalizedBracket.rounds.length) return 0;
-    return 1;
-  }, [normalizedBracket]);
-
-  const handleViewBracket = useCallback(() => {
+  const handleViewBracket = () => {
     if (!normalizedBracket) {
       toast({
         title: 'Chaveamento não encontrado',
@@ -304,7 +343,7 @@ const HistoricoBrackets: React.FC = () => {
     }
     setSelectedBracket(normalizedBracket);
     setBracketDialogOpen(true);
-  }, [normalizedBracket, toast]);
+  };
 
   const handleCloseBracket = () => {
     setBracketDialogOpen(false);
@@ -330,23 +369,40 @@ const HistoricoBrackets: React.FC = () => {
       <div className="flex-1 flex flex-col">
         <Header onToggleSidebar={() => setSidebarCollapsed(!isSidebarCollapsed)} />
         <main className="flex-1 p-6 overflow-y-auto space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Histórico de Chaveamentos</h1>
-            <p className="text-gray-600 max-w-2xl">
-              Visualize o histórico completo dos chaveamentos gerados para cada categoria do campeonato, 
-              incluindo todos os confrontos e resultados finais.
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/campeonatos-publicos')}
+                  className="gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar
+                </Button>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900">Chaveamentos do Campeonato</h1>
+              <p className="text-gray-600 max-w-2xl mt-2">
+                {isCampeonatoFinalizado 
+                  ? 'Visualize todos os chaveamentos finalizados deste campeonato.'
+                  : 'Visualize apenas as categorias com campeão já definido.'}
+              </p>
+            </div>
+            <History className="h-10 w-10 text-blue-600" />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Card>
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-3 rounded-lg bg-blue-100 text-blue-600">
                   <GitBranch className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Total de Categorias</p>
-                  <p className="text-2xl font-semibold text-gray-900">{categorias.length}</p>
+                  <p className="text-xs uppercase tracking-wide text-gray-500">
+                    {isCampeonatoFinalizado ? 'Total de Categorias' : 'Categorias com Campeão'}
+                  </p>
+                  <p className="text-2xl font-semibold text-gray-900">{categoriasDisponiveis.length}</p>
                 </div>
               </CardContent>
             </Card>
@@ -356,9 +412,9 @@ const HistoricoBrackets: React.FC = () => {
                   <Trophy className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Chaveamentos Gerados</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {selectedModalidade ? chaveamentosGerados : '-'}
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Status do Campeonato</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {isCampeonatoFinalizado ? 'Finalizado' : 'Em Andamento'}
                   </p>
                 </div>
               </CardContent>
@@ -366,36 +422,56 @@ const HistoricoBrackets: React.FC = () => {
           </div>
 
           <Card>
-            <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between p-6">
               <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-gray-500">Campeonato selecionado</p>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Campeonato</p>
                 <h2 className="text-xl font-semibold text-gray-900">
                   {campeonatoLoading
                     ? 'Carregando campeonato…'
-                    : campeonatoDetalhado?.nome ?? 'Nenhum campeonato selecionado'}
+                    : campeonatoDetalhado?.nome ?? 'Campeonato'}
                 </h2>
                 <p className="text-sm text-gray-600 max-w-xl">
-                  Selecione uma categoria abaixo para visualizar o histórico completo do chaveamento gerado.
+                  {campeonatoDetalhado?.associacao?.nome && (
+                    <>Organizado por: {campeonatoDetalhado.associacao.nome}</>
+                  )}
                 </p>
+                {campeonatoError && (
+                  <p className="text-sm text-red-600">
+                    Erro ao carregar campeonato. Tente novamente.
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
-                <Select value={selectedModalidade} onValueChange={setSelectedModalidade}>
-                  <SelectTrigger className="w-[280px]">
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categorias.map((modalidade) => (
-                      <SelectItem key={modalidade.idCampeonatoModalidade} value={modalidade.idCampeonatoModalidade.toString()}>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {formatModalidade(modalidade.categoria?.modalidade)}
-                          </Badge>
-                          {modalidade.categoria?.nome}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {campeonatoLoading ? (
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Carregando...
+                  </div>
+                ) : categoriasDisponiveis.length > 0 ? (
+                  <Select value={selectedModalidade} onValueChange={setSelectedModalidade}>
+                    <SelectTrigger className="w-[280px]">
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoriasDisponiveis.map((modalidade) => (
+                        <SelectItem key={modalidade.idCampeonatoModalidade} value={modalidade.idCampeonatoModalidade.toString()}>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {formatModalidade(modalidade.categoria?.modalidade)}
+                            </Badge>
+                            {modalidade.categoria?.nome}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="text-sm text-gray-500">
+                    {isCampeonatoFinalizado 
+                      ? 'Nenhuma categoria cadastrada'
+                      : 'Aguardando campeões...'}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -449,6 +525,9 @@ const HistoricoBrackets: React.FC = () => {
                             <div>
                               <h3 className="font-semibold text-yellow-800">Campeão da Categoria</h3>
                               <p className="text-yellow-700">{normalizedBracket.champion.nome}</p>
+                              {normalizedBracket.champion.associacao && (
+                                <p className="text-sm text-yellow-600">{normalizedBracket.champion.associacao}</p>
+                              )}
                             </div>
                           </div>
                         </CardContent>
@@ -464,12 +543,14 @@ const HistoricoBrackets: React.FC = () => {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <GitBranch className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <Lock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      Chaveamento não encontrado
+                      Chaveamento não disponível
                     </h3>
                     <p className="text-gray-600">
-                      Nenhum chaveamento foi gerado para esta categoria ainda.
+                      {isCampeonatoFinalizado 
+                        ? 'Nenhum chaveamento foi gerado para esta categoria.'
+                        : 'Esta categoria ainda não tem um campeão definido.'}
                     </p>
                   </div>
                 )}
@@ -480,12 +561,20 @@ const HistoricoBrackets: React.FC = () => {
           {!selectedCategoria && (
             <Card>
               <CardContent className="text-center py-12">
-                <Filter className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <GitBranch className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Selecione uma categoria
+                  {categoriasDisponiveis.length === 0 
+                    ? (isCampeonatoFinalizado 
+                        ? 'Nenhuma categoria cadastrada' 
+                        : 'Nenhum campeão definido ainda')
+                    : 'Selecione uma categoria'}
                 </h3>
                 <p className="text-gray-600">
-                  Escolha uma categoria no seletor acima para visualizar o histórico do chaveamento.
+                  {categoriasDisponiveis.length === 0 
+                    ? (isCampeonatoFinalizado 
+                        ? 'Este campeonato não possui categorias vinculadas.' 
+                        : 'Aguarde a finalização de pelo menos uma categoria para visualizar os chaveamentos.')
+                    : 'Escolha uma categoria no seletor acima para visualizar o chaveamento.'}
                 </p>
               </CardContent>
             </Card>
@@ -497,7 +586,7 @@ const HistoricoBrackets: React.FC = () => {
         <DialogContent className="max-w-5xl">
           <DialogHeader>
             <DialogTitle>
-              Histórico: {selectedCategoria?.categoria?.nome ?? 'Categoria'}
+              {selectedCategoria?.categoria?.nome ?? 'Categoria'}
             </DialogTitle>
             <DialogDescription>
               {formatModalidade(selectedCategoria?.categoria?.modalidade)} - Visualização completa do chaveamento
@@ -509,7 +598,7 @@ const HistoricoBrackets: React.FC = () => {
               modalidade={formatModalidade(selectedCategoria?.categoria?.modalidade)}
               bracket={selectedBracket}
               loading={bracketLoading}
-              onAdvance={undefined} 
+              onAdvance={undefined}
               advancingMatchId={null}
             />
           </ScrollArea>
@@ -524,4 +613,4 @@ const HistoricoBrackets: React.FC = () => {
   );
 };
 
-export default HistoricoBrackets;
+export default HistoricoBracketsPublico;

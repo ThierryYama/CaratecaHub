@@ -9,14 +9,15 @@ import {
   Award,
   Loader2,
   Filter,
+  ArrowLeft,
 } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -37,12 +38,13 @@ import { useSidebar } from '@/context/SidebarContext';
 import {
   CampeonatoDetalhado,
   CampeonatoModalidadeWithCategoria,
-  fetchCampeonatoDetalhado,
+  fetchCampeonatoDetalhadoPublico,
   fetchPartidasAtletaPorCategoria,
   fetchPartidasEquipePorCategoria,
   Modalidade,
   PartidaAtletaResponse,
   PartidaEquipeResponse,
+  Status,
 } from '@/services/api';
 
 const isEquipeModalidade = (modalidade?: Modalidade) =>
@@ -66,6 +68,8 @@ const formatModalidade = (modalidade?: Modalidade) => {
 const PONTOS_OURO = 5;
 const PONTOS_PRATA = 3;
 const PONTOS_BRONZE = 1;
+
+const RESULTADO_BYE = 'BYE';
 
 interface ResultadoCategoria {
   categoria: string;
@@ -161,7 +165,7 @@ const extrairResultados = (
   const terceiros: any[] = [];
 
   semifinais.forEach(semi => {
-    if (semi.resultado && semi.resultado !== 'BYE') {
+    if (semi.resultado && semi.resultado !== RESULTADO_BYE) {
       const perdedorSlotSemi = semi.resultado.endsWith('_1') ? 2 : 1;
       
       if (tipo === 'ATLETA') {
@@ -195,16 +199,15 @@ const extrairResultados = (
   return { campeao, vice, terceiros };
 };
 
-const ResultadosFinais: React.FC = () => {
+const ResultadosFinaisPublico: React.FC = () => {
   const { isCollapsed: isSidebarCollapsed, setCollapsed: setSidebarCollapsed } = useSidebar();
+  const navigate = useNavigate();
 
   const params = useParams<{ id?: string }>();
-  const persistedId = typeof window !== 'undefined' ? localStorage.getItem('currentCampeonatoId') ?? undefined : undefined;
   const campeonatoId = useMemo(() => {
     if (params.id) return Number(params.id);
-    if (persistedId) return Number(persistedId);
     return undefined;
-  }, [params.id, persistedId]);
+  }, [params.id]);
 
   const [selectedModalidade, setSelectedModalidade] = useState<string>('todas');
 
@@ -213,8 +216,8 @@ const ResultadosFinais: React.FC = () => {
     isLoading: campeonatoLoading,
     error: campeonatoError,
   } = useQuery<CampeonatoDetalhado>({
-    queryKey: ['campeonato-detalhado', campeonatoId],
-    queryFn: () => fetchCampeonatoDetalhado(campeonatoId!),
+    queryKey: ['campeonato-detalhado-publico', campeonatoId],
+    queryFn: () => fetchCampeonatoDetalhadoPublico(campeonatoId!),
     enabled: !!campeonatoId,
     staleTime: 60 * 1000,
   });
@@ -227,7 +230,7 @@ const ResultadosFinais: React.FC = () => {
   }, [campeonatoDetalhado]);
 
   const categoriasQuery = useQuery({
-    queryKey: ['resultados-categorias', campeonatoId],
+    queryKey: ['resultados-categorias-publico', campeonatoId],
     queryFn: async () => {
       if (!categorias.length) return [];
       
@@ -329,6 +332,8 @@ const ResultadosFinais: React.FC = () => {
   const categoriasComResultados = categoriasQuery.data?.filter(r => r.campeao).length ?? 0;
   const totalAssociacoes = pontuacaoAssociacoes.length;
 
+  const isCampeonatoFinalizado = campeonatoDetalhado?.status === Status.FINALIZADO;
+
   return (
     <div className="h-screen flex w-full bg-gray-50 overflow-hidden">
       <Sidebar
@@ -348,12 +353,25 @@ const ResultadosFinais: React.FC = () => {
       <div className="flex-1 flex flex-col">
         <Header onToggleSidebar={() => setSidebarCollapsed(!isSidebarCollapsed)} />
         <main className="flex-1 p-6 overflow-y-auto space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Resultados Finais</h1>
-            <p className="text-gray-600 max-w-2xl">
-              Visualize os resultados completos do campeonato, incluindo pódio por categoria e 
-              ranking geral de associações baseado no sistema de pontuação.
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/campeonatos-publicos')}
+                  className="gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar
+                </Button>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900">Resultados Finais</h1>
+              <p className="text-gray-600 max-w-2xl mt-2">
+                Visualize os resultados completos do campeonato, incluindo pódio por categoria e 
+                ranking geral de associações baseado no sistema de pontuação.
+              </p>
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -406,16 +424,19 @@ const ResultadosFinais: React.FC = () => {
           </div>
 
           <Card>
-            <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between p-6">
               <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-gray-500">Campeonato selecionado</p>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Campeonato</p>
                 <h2 className="text-xl font-semibold text-gray-900">
                   {campeonatoLoading
                     ? 'Carregando campeonato…'
-                    : campeonatoDetalhado?.nome ?? 'Nenhum campeonato selecionado'}
+                    : campeonatoDetalhado?.nome ?? 'Campeonato'}
                 </h2>
                 <p className="text-sm text-gray-600 max-w-xl">
                   Sistema de pontuação: 1º lugar = {PONTOS_OURO} pts, 2º lugar = {PONTOS_PRATA} pts, 3º lugar = {PONTOS_BRONZE} pt
+                  {campeonatoDetalhado?.associacao?.nome && (
+                    <> • Organizado por: {campeonatoDetalhado.associacao.nome}</>
+                  )}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -625,4 +646,4 @@ const ResultadosFinais: React.FC = () => {
   );
 };
 
-export default ResultadosFinais;
+export default ResultadosFinaisPublico;

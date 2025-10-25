@@ -5,6 +5,7 @@ import { fetchPerfil, updatePerfil, deletePerfil, UpdatePerfilInput } from '@/se
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import EstadoSelect from '@/components/ui/estado-select';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -408,12 +409,11 @@ const Perfil = () => {
 
                       <div className="md:col-span-1 space-y-2">
                         <Label htmlFor="estado">UF</Label>
-                        <Input
+                        <EstadoSelect
                           id="estado"
                           value={formData.endereco?.estado || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, endereco: { ...ensureEndereco(prev.endereco), estado: e.target.value } }))}
+                          onChange={(uf) => setFormData(prev => ({ ...prev, endereco: { ...ensureEndereco(prev.endereco), estado: uf } }))}
                           disabled={!isEditing || loadingCep}
-                          maxLength={2}
                         />
                       </div>
                     </div>

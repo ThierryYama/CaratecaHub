@@ -24,7 +24,7 @@ export const obterPerfil = async (req: AuthRequest, res: Response) => {
     }
 
     const endereco = await prisma.endereco.findFirst({
-      where: { idAssociacao },
+      where: { idAssociacao, campeonatos: { none: {} } },
       orderBy: { createdAt: 'desc' }
     });
 
@@ -83,7 +83,8 @@ export const atualizarPerfil = async (req: AuthRequest, res: Response) => {
     let enderecoAtualizado = null;
     if (endereco && endereco.rua && endereco.numero && endereco.bairro && endereco.cidade && endereco.estado && endereco.cep) {
       const enderecoExistente = await prisma.endereco.findFirst({
-        where: { idAssociacao }
+        where: { idAssociacao, campeonatos: { none: {} } },
+        orderBy: { createdAt: 'desc' }
       });
 
       if (enderecoExistente) {
