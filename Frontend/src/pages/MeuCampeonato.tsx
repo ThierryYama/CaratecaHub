@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import EstadoSelect from '@/components/ui/estado-select';
 import {
   Trophy,
   Users,
@@ -16,7 +17,20 @@ import {
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchCampeonatoById, fetchCampeonatoDetalhado, updateCampeonato, atualizarEnderecoCampeonato, Status, Campeonato, CampeonatoDetalhado, fetchEtapas } from '@/services/api';
+import { 
+  fetchCampeonatoById, 
+  fetchCampeonatoDetalhado, 
+  updateCampeonato, 
+  atualizarEnderecoCampeonato, 
+  fetchInscricoesAtletaPorIdDeCampeonatoModalidade,
+  fetchInscricoesEquipePorIdDeCampeonatoModalidade,
+  fetchPartidasAtletaPorCategoria,
+  fetchPartidasEquipePorCategoria,
+  Status, 
+  Campeonato, 
+  CampeonatoDetalhado, 
+  fetchEtapas 
+} from '@/services/api';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import { useSidebar } from '@/context/SidebarContext';
@@ -54,6 +68,26 @@ const MeuCampeonato = () => {
     refetchOnMount: 'always'
   });
 
+  const [detalhesEstatisticas, setDetalhesEstatisticas] = useState<{
+    inscricoesAtleta: number;
+    inscricoesEquipe: number;
+    partidasAtleta: number;
+    partidasEquipe: number;
+  }>({
+    inscricoesAtleta: 0,
+    inscricoesEquipe: 0,
+    partidasAtleta: 0,
+    partidasEquipe: 0,
+  });
+
+  const [detalhesPorModalidade, setDetalhesPorModalidade] = useState<{
+    [key: string]: {
+      categorias: number;
+      inscricoes: number;
+      partidas: number;
+    };
+  }>({});
+
   const { data: etapasStatus } = useQuery({
     queryKey: ['etapas', campeonatoId],
     queryFn: () => (campeonatoId ? fetchEtapas(campeonatoId) : Promise.resolve(undefined)),
@@ -61,6 +95,76 @@ const MeuCampeonato = () => {
     refetchOnMount: 'always'
   });
 
+  useEffect(() => {
+    if (!campeonatoDet?.modalidades) return;
+    
+    let cancelado = false;
+    
+    async function carregarEstatisticas() {
+      let totalInscricoesAtleta = 0;
+      let totalInscricoesEquipe = 0;
+      let totalPartidasAtleta = 0;
+      let totalPartidasEquipe = 0;
+
+      const detalhesModal: typeof detalhesPorModalidade = {
+        KATA: { categorias: 0, inscricoes: 0, partidas: 0 },
+        KUMITE: { categorias: 0, inscricoes: 0, partidas: 0 },
+        KATA_EQUIPE: { categorias: 0, inscricoes: 0, partidas: 0 },
+        KUMITE_EQUIPE: { categorias: 0, inscricoes: 0, partidas: 0 },
+      };
+
+      for (const modalidade of campeonatoDet.modalidades) {
+        if (cancelado) break;
+        
+        const tipoModalidade = modalidade.categoria?.modalidade;
+        if (!tipoModalidade) continue;
+
+        detalhesModal[tipoModalidade].categorias += 1;
+        
+        try {
+          const inscricoesAtleta = await fetchInscricoesAtletaPorIdDeCampeonatoModalidade(modalidade.idCampeonatoModalidade);
+          totalInscricoesAtleta += inscricoesAtleta.length;
+          if (tipoModalidade === 'KATA' || tipoModalidade === 'KUMITE') {
+            detalhesModal[tipoModalidade].inscricoes += inscricoesAtleta.length;
+          }
+          
+          const inscricoesEquipe = await fetchInscricoesEquipePorIdDeCampeonatoModalidade(modalidade.idCampeonatoModalidade);
+          totalInscricoesEquipe += inscricoesEquipe.length;
+          if (tipoModalidade === 'KATA_EQUIPE' || tipoModalidade === 'KUMITE_EQUIPE') {
+            detalhesModal[tipoModalidade].inscricoes += inscricoesEquipe.length;
+          }
+          
+          const partidasAtleta = await fetchPartidasAtletaPorCategoria(modalidade.idCampeonatoModalidade);
+          totalPartidasAtleta += partidasAtleta.length;
+          if (tipoModalidade === 'KATA' || tipoModalidade === 'KUMITE') {
+            detalhesModal[tipoModalidade].partidas += partidasAtleta.length;
+          }
+          
+          const partidasEquipe = await fetchPartidasEquipePorCategoria(modalidade.idCampeonatoModalidade);
+          totalPartidasEquipe += partidasEquipe.length;
+          if (tipoModalidade === 'KATA_EQUIPE' || tipoModalidade === 'KUMITE_EQUIPE') {
+            detalhesModal[tipoModalidade].partidas += partidasEquipe.length;
+          }
+        } catch (error) {
+          console.error('Erro ao carregar estatísticas:', error);
+        }
+      }
+
+      if (!cancelado) {
+        setDetalhesEstatisticas({
+          inscricoesAtleta: totalInscricoesAtleta,
+          inscricoesEquipe: totalInscricoesEquipe,
+          partidasAtleta: totalPartidasAtleta,
+          partidasEquipe: totalPartidasEquipe,
+        });
+        setDetalhesPorModalidade(detalhesModal);
+      }
+    }
+
+    carregarEstatisticas();
+    
+    return () => { cancelado = true; };
+  }, [campeonatoDet?.modalidades]);
 
   interface UpdateCorePayload { nome: string; dataInicio: string; dataFim?: string; descricao?: string }
   const updateCoreMutation = useMutation<Campeonato, Error, UpdateCorePayload>({
@@ -89,16 +193,24 @@ const MeuCampeonato = () => {
     }
   });
 
-  // Mutation: finalizar
-  const finalizarMutation = useMutation<Campeonato, Error, void>({
+  const cancelarMutation = useMutation<Campeonato, Error, void>({
     mutationFn: async () => {
       if (!campeonatoId) throw new Error('ID inválido');
-      return updateCampeonato(campeonatoId, { status: Status.FINALIZADO });
+      
+      const totalPartidas = estatisticas.partidasAtleta + estatisticas.partidasEquipe;
+      if (totalPartidas > 0) {
+        throw new Error('Não é possível cancelar o campeonato pois já existem partidas registradas.');
+      }
+      
+      return updateCampeonato(campeonatoId, { status: Status.CANCELADO });
     },
     onSuccess: () => {
       localStorage.removeItem('currentCampeonatoId');
       queryClient.invalidateQueries({ queryKey: ['campeonato', campeonatoId] });
       navigate('/campeonatos');
+    },
+    onError: (error) => {
+      alert(error.message);
     }
   });
 
@@ -140,16 +252,36 @@ const MeuCampeonato = () => {
     }[s];
   };
 
-  const estatisticas = {
-    modalidades: 4,
-    categorias: 12,
-    inscricoesAtleta: 89,
-    inscricoesEquipe: 56,
-    partidasAtleta: 67,
-    partidasEquipe: 28,
-    chaveamentos: 9,
-    resultadosDefinidos: 7
-  };
+  const estatisticas = useMemo(() => {
+    if (!campeonatoDet) {
+      return {
+        modalidades: 0,
+        categorias: 0,
+        inscricoesAtleta: 0,
+        inscricoesEquipe: 0,
+        partidasAtleta: 0,
+        partidasEquipe: 0,
+        chaveamentos: 0,
+        resultadosDefinidos: 0
+      };
+    }
+
+    const categorias = campeonatoDet.modalidades?.length || 0;
+    const modalidadesUnicas = new Set(
+      campeonatoDet.modalidades?.map(m => m.categoria?.modalidade).filter(Boolean) || []
+    );
+    const modalidades = modalidadesUnicas.size;
+
+    return {
+      modalidades,
+      categorias,
+      inscricoesAtleta: detalhesEstatisticas.inscricoesAtleta,
+      inscricoesEquipe: detalhesEstatisticas.inscricoesEquipe,
+      partidasAtleta: detalhesEstatisticas.partidasAtleta,
+      partidasEquipe: detalhesEstatisticas.partidasEquipe,
+      chaveamentos: categorias,
+    };
+  }, [campeonatoDet, detalhesEstatisticas]);
 
 
   const cadastroConcluida = !!campeonato;
@@ -265,12 +397,17 @@ const MeuCampeonato = () => {
                   </Button>
                   {campeonato.status !== Status.FINALIZADO && campeonato.status !== Status.CANCELADO && (
                     <Button
-                      className="bg-red-600 hover:bg-red-700 flex items-center gap-2"
-                      disabled={finalizarMutation.isPending}
-                      onClick={() => finalizarMutation.mutate()}
+                      variant="destructive"
+                      className="flex items-center gap-2"
+                      disabled={cancelarMutation.isPending}
+                      onClick={() => {
+                        if (globalThis.confirm('Tem certeza que deseja cancelar este campeonato?')) {
+                          cancelarMutation.mutate();
+                        }
+                      }}
                     >
                       <Square className="w-4 h-4" />
-                      {finalizarMutation.isPending ? 'Encerrando...' : 'Encerrar Campeonato'}
+                      {cancelarMutation.isPending ? 'Cancelando...' : 'Cancelar Campeonato'}
                     </Button>
                   )}
                 </div>
@@ -344,8 +481,8 @@ const MeuCampeonato = () => {
                       <Award className="w-6 h-6 text-indigo-600" />
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-indigo-600">{estatisticas.partidasAtleta + estatisticas.partidasEquipe}</div>
-                      <div className="text-sm text-gray-600">Total de Partidas</div>
+                      <div className="text-2xl font-bold text-indigo-600">{estatisticas.partidasAtleta}</div>
+                      <div className="text-sm text-gray-600">Partidas (Atletas)</div>
                     </div>
                   </div>
                 </CardContent>
@@ -354,12 +491,12 @@ const MeuCampeonato = () => {
               <Card className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-3 bg-orange-100 rounded-lg">
-                      <Medal className="w-6 h-6 text-orange-600" />
+                    <div className="p-3 bg-purple-100 rounded-lg">
+                      <Users className="w-6 h-6 text-purple-600" />
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-orange-600">{estatisticas.resultadosDefinidos}/{estatisticas.chaveamentos}</div>
-                      <div className="text-sm text-gray-600">Resultados</div>
+                      <div className="text-2xl font-bold text-purple-600">{estatisticas.partidasEquipe}</div>
+                      <div className="text-sm text-gray-600">Partidas (Equipes)</div>
                     </div>
                   </div>
                 </CardContent>
@@ -381,15 +518,15 @@ const MeuCampeonato = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Categorias:</span>
-                      <span className="font-semibold">4</span>
+                      <span className="font-semibold">{detalhesPorModalidade.KATA?.categorias || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Atletas Inscritos:</span>
-                      <span className="font-semibold">45</span>
+                      <span className="font-semibold">{detalhesPorModalidade.KATA?.inscricoes || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Partidas:</span>
-                      <span className="font-semibold">32</span>
+                      <span className="font-semibold">{detalhesPorModalidade.KATA?.partidas || 0}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -406,15 +543,15 @@ const MeuCampeonato = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Categorias:</span>
-                      <span className="font-semibold">6</span>
+                      <span className="font-semibold">{detalhesPorModalidade.KUMITE?.categorias || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Atletas Inscritos:</span>
-                      <span className="font-semibold">78</span>
+                      <span className="font-semibold">{detalhesPorModalidade.KUMITE?.inscricoes || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Partidas:</span>
-                      <span className="font-semibold">43</span>
+                      <span className="font-semibold">{detalhesPorModalidade.KUMITE?.partidas || 0}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -431,15 +568,15 @@ const MeuCampeonato = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Categorias:</span>
-                      <span className="font-semibold">2</span>
+                      <span className="font-semibold">{detalhesPorModalidade.KATA_EQUIPE?.categorias || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Equipes Inscritas:</span>
-                      <span className="font-semibold">12</span>
+                      <span className="font-semibold">{detalhesPorModalidade.KATA_EQUIPE?.inscricoes || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Partidas:</span>
-                      <span className="font-semibold">8</span>
+                      <span className="font-semibold">{detalhesPorModalidade.KATA_EQUIPE?.partidas || 0}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -456,15 +593,15 @@ const MeuCampeonato = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Categorias:</span>
-                      <span className="font-semibold">2</span>
+                      <span className="font-semibold">{detalhesPorModalidade.KUMITE_EQUIPE?.categorias || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Equipes Inscritas:</span>
-                      <span className="font-semibold">8</span>
+                      <span className="font-semibold">{detalhesPorModalidade.KUMITE_EQUIPE?.inscricoes || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Partidas:</span>
-                      <span className="font-semibold">12</span>
+                      <span className="font-semibold">{detalhesPorModalidade.KUMITE_EQUIPE?.partidas || 0}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -609,7 +746,15 @@ const MeuCampeonato = () => {
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium" htmlFor="estado">Estado</label>
-                        <input id="estado" name="estado" defaultValue={campeonato.endereco?.estado} required className="w-full border rounded px-3 py-2 text-sm" />
+                        <input type="hidden" name="estado" value={campeonato.endereco?.estado || ''} />
+                        <EstadoSelect
+                          id="estado"
+                          value={campeonato.endereco?.estado || ''}
+                          onChange={(uf) => {
+                            const hidden = document.querySelector<HTMLInputElement>('input[name="estado"]');
+                            if (hidden) hidden.value = uf;
+                          }}
+                        />
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium" htmlFor="cep">CEP</label>
