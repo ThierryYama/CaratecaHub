@@ -10,7 +10,9 @@ import Campeonatos from "./pages/Campeonatos";
 import MeuCampeonato from "./pages/MeuCampeonato";
 import ChaveamentosGerencia from "./pages/ChaveamentosGerencia";
 import HistoricoBrackets from "./pages/HistoricoBrackets";
+import HistoricoBracketsPublico from "./pages/HistoricoBracketsPublico";
 import ResultadosFinais from "./pages/ResultadosFinais";
+import ResultadosFinaisPublico from "./pages/ResultadosFinaisPublico";
 import Categorias from "./pages/Categorias";
 import Atletas from "./pages/Atletas";
 import Perfil from "./pages/Perfil";
@@ -39,6 +41,8 @@ const App = () => (
             <Route path="/campeonatos" element={<ProtectedRoute><Campeonatos /></ProtectedRoute>} /> 
             <Route path="/campeonatos-publicos" element={<ProtectedRoute><CampeonatosPublicos /></ProtectedRoute>} /> 
             <Route path="/inscrever-atletas/:id" element={<ProtectedRoute><InscreverAtletas /></ProtectedRoute>} /> 
+            <Route path="/historico-brackets-publico/:id" element={<ProtectedRoute><HistoricoBracketsPublico /></ProtectedRoute>} /> 
+            <Route path="/resultados-finais-publico/:id" element={<ProtectedRoute><ResultadosFinaisPublico /></ProtectedRoute>} /> 
             <Route path="/meu-campeonato/:id" element={<ProtectedRoute><MeuCampeonato /></ProtectedRoute>} /> 
             <Route path="/meu-campeonato/:id/modalidades" element={<ProtectedRoute><VincularCategorias /></ProtectedRoute>} /> 
             <Route path="/meu-campeonato/:id/inscricoes" element={<ProtectedRoute><Inscricoes /></ProtectedRoute>} /> 
