@@ -148,6 +148,38 @@ interface BracketOps {
 	makeByeUpdateArgs(targetRound: number, position: number, slot: 1 | 2, winnerId: number): { where: any; data: any };
 }
 
+async function propagateByes(idCampeonatoModalidade: number, ops: BracketOps, lastRound: number) {
+	for (let round = 2; round <= lastRound; round++) {
+		const currentRoundMatches = await (ops as any).findMany({
+			where: { idCampeonatoModalidade, round }
+		});
+
+		for (const match of currentRoundMatches) {
+			const hasPlayer1 = (ops as any).hasPlayer1(match);
+			const hasPlayer2 = (ops as any).hasPlayer2(match);
+
+			const exactlyOnePlayer = (hasPlayer1 && !hasPlayer2) || (!hasPlayer1 && hasPlayer2);
+			if (!exactlyOnePlayer || match.resultado) continue;
+
+			const nextRound = round + 1;
+			const winnerId = hasPlayer1 ? (ops as any).getPlayer1Id(match) : (ops as any).getPlayer2Id(match);
+
+			if (round < lastRound) {
+				await ops.update({
+					where: (ops as any).getMatchWhere(match),
+					data: { resultado: 'BYE' }
+				});
+			}
+
+			if (nextRound <= lastRound) {
+				const nextPos = Math.ceil(match.position / 2);
+				const slot: 1 | 2 = match.position % 2 === 1 ? 1 : 2;
+				await ops.update(ops.makeByeUpdateArgs(nextRound, nextPos, slot, winnerId));
+			}
+		}
+	}
+}
+
 async function buildBracket(firstRoundPairs: Pair[], ops: BracketOps) {
 	const round1Rows = firstRoundPairs.map((pair, idx) => ops.makeRound1Row(pair, idx));
 	if (round1Rows.length) await ops.createMany({ data: round1Rows, skipDuplicates: true });
@@ -185,10 +217,22 @@ async function generateEquipeBracket(idCampeonatoModalidade: number) {
 	if (inscritos.length < 2) httpError(400, 'Inscrições insuficientes para gerar chaveamento');
 	const enriched: Participant[] = inscritos.map(i => ({ id: i.idInscricaoEquipe, associacaoId: i.equipe?.idAssociacao }));
 	const firstRoundPairs = pairWithAssociationSeparation(enriched);
-	await buildBracket(firstRoundPairs, {
+	const ops = {
 		createMany: (args: any) => prisma.partidaEquipe.createMany(args),
 		update: (args: any) => prisma.partidaEquipe.update(args),
-		makeRound1Row: (pair, idx) => {
+		findMany: (args: any) => prisma.partidaEquipe.findMany(args),
+		hasPlayer1: (match: any) => match.idInscricaoEquipe1 !== null,
+		hasPlayer2: (match: any) => match.idInscricaoEquipe2 !== null,
+		getPlayer1Id: (match: any) => match.idInscricaoEquipe1,
+		getPlayer2Id: (match: any) => match.idInscricaoEquipe2,
+		getMatchWhere: (match: any) => ({
+			idCampeonatoModalidade_round_position: {
+				idCampeonatoModalidade: match.idCampeonatoModalidade,
+				round: match.round,
+				position: match.position
+			}
+		}),
+		makeRound1Row: (pair: Pair, idx: number) => {
 			const [a, b] = pair;
 			return {
 				idCampeonatoModalidade,
@@ -199,16 +243,18 @@ async function generateEquipeBracket(idCampeonatoModalidade: number) {
 				resultado: a && !b ? 'BYE' : null,
 			};
 		},
-		makeEmptyRow: (round, position) => ({
+		makeEmptyRow: (round: number, position: number) => ({
 			idCampeonatoModalidade,
 			round,
 			position,
 		}),
-		makeByeUpdateArgs: (round, position, slot, winnerId) => ({
+		makeByeUpdateArgs: (round: number, position: number, slot: 1 | 2, winnerId: number) => ({
 			where: ({ idCampeonatoModalidade_round_position: { idCampeonatoModalidade, round, position } } as any),
 			data: ({ [slot === 1 ? 'idInscricaoEquipe1' : 'idInscricaoEquipe2']: winnerId } as any),
 		}),
-	});
+	};
+	const lastRound = await buildBracket(firstRoundPairs, ops);
+	await propagateByes(idCampeonatoModalidade, ops, lastRound);
 	return 'Chaveamento (equipes) criado com rounds';
 }
 
@@ -220,10 +266,22 @@ async function generateAtletaBracket(idCampeonatoModalidade: number) {
 	if (inscritos.length < 2) httpError(400, 'Inscrições insuficientes para gerar chaveamento');
 	const enriched: Participant[] = inscritos.map(i => ({ id: i.idInscricaoAtleta, associacaoId: i.atleta?.idAssociacao }));
 	const firstRoundPairs = pairWithAssociationSeparation(enriched);
-	await buildBracket(firstRoundPairs, {
+	const ops = {
 		createMany: (args: any) => prisma.partidaAtleta.createMany(args),
 		update: (args: any) => prisma.partidaAtleta.update(args),
-		makeRound1Row: (pair, idx) => {
+		findMany: (args: any) => prisma.partidaAtleta.findMany(args),
+		hasPlayer1: (match: any) => match.idInscricaoAtleta1 !== null,
+		hasPlayer2: (match: any) => match.idInscricaoAtleta2 !== null,
+		getPlayer1Id: (match: any) => match.idInscricaoAtleta1,
+		getPlayer2Id: (match: any) => match.idInscricaoAtleta2,
+		getMatchWhere: (match: any) => ({
+			idCampeonatoModalidade_round_position: {
+				idCampeonatoModalidade: match.idCampeonatoModalidade,
+				round: match.round,
+				position: match.position
+			}
+		}),
+		makeRound1Row: (pair: Pair, idx: number) => {
 			const [a, b] = pair;
 			return {
 				idCampeonatoModalidade,
@@ -234,16 +292,18 @@ async function generateAtletaBracket(idCampeonatoModalidade: number) {
 				resultado: a && !b ? 'BYE' : null,
 			};
 		},
-		makeEmptyRow: (round, position) => ({
+		makeEmptyRow: (round: number, position: number) => ({
 			idCampeonatoModalidade,
 			round,
 			position,
 		}),
-		makeByeUpdateArgs: (round, position, slot, winnerId) => ({
+		makeByeUpdateArgs: (round: number, position: number, slot: 1 | 2, winnerId: number) => ({
 			where: ({ idCampeonatoModalidade_round_position: { idCampeonatoModalidade, round, position } } as any),
 			data: ({ [slot === 1 ? 'idInscricaoAtleta1' : 'idInscricaoAtleta2']: winnerId } as any),
 		}),
-	});
+	};
+	const lastRound = await buildBracket(firstRoundPairs, ops);
+	await propagateByes(idCampeonatoModalidade, ops, lastRound);
 	return 'Chaveamento (atletas) criado com rounds';
 }
 
@@ -433,6 +493,120 @@ export default {
 			return res.json({ nextId: updated.idPartidaEquipe });
 		} catch (err: any) {
 			return res.status(500).json({ message: err?.message || 'Erro ao avançar equipe' });
+		}
+	},
+
+	async desfazerAtleta(req: Request, res: Response) {
+		try {
+			const { idPartida } = req.body as { idPartida: number };
+			if (!idPartida) return res.status(400).json({ message: 'ID da partida é obrigatório' });
+			
+			const partida = await prisma.partidaAtleta.findUnique({ 
+				where: { idPartidaAtleta: idPartida },
+			});
+			if (!partida) return res.status(404).json({ message: 'Partida não encontrada' });
+			if (!partida.resultado || partida.resultado === 'BYE') {
+				return res.status(400).json({ message: 'Esta partida não possui resultado para desfazer' });
+			}
+
+			const { idCampeonatoModalidade, round, position } = partida as any;
+			
+			const nextRound = round + 1;
+			const nextPos = Math.ceil(position / 2);
+			const nextMatch = await prisma.partidaAtleta.findUnique({ 
+				where: ({
+					idCampeonatoModalidade_round_position: { idCampeonatoModalidade, round: nextRound, position: nextPos }
+				} as any)
+			});
+			
+			if (nextMatch?.resultado && nextMatch.resultado !== 'BYE') {
+				return res.status(400).json({ 
+					message: 'Não é possível desfazer. A próxima partida já possui resultado definido.' 
+				});
+			}
+
+			await prisma.partidaAtleta.update({ 
+				where: { idPartidaAtleta: idPartida }, 
+				data: { resultado: null } 
+			});
+
+			if (nextMatch) {
+				const side = position % 2 === 1 ? 1 : 2;
+				const nextField = side === 1 ? 'idInscricaoAtleta1' : 'idInscricaoAtleta2';
+				await prisma.partidaAtleta.update({ 
+					where: ({
+						idCampeonatoModalidade_round_position: { idCampeonatoModalidade, round: nextRound, position: nextPos }
+					} as any), 
+					data: ({ [nextField]: null } as any) 
+				});
+			}
+
+			const cm = await prisma.campeonatoModalidade.findUnique({
+				where: { idCampeonatoModalidade },
+				select: { idCampeonato: true },
+			});
+			if (cm) await refreshCampeonatoChaveamentoStatus(cm.idCampeonato);
+
+			return res.json({ message: 'Resultado desfeito com sucesso' });
+		} catch (err: any) {
+			return res.status(500).json({ message: err?.message || 'Erro ao desfazer resultado' });
+		}
+	},
+
+	async desfazerEquipe(req: Request, res: Response) {
+		try {
+			const { idPartida } = req.body as { idPartida: number };
+			if (!idPartida) return res.status(400).json({ message: 'ID da partida é obrigatório' });
+			
+			const partida = await prisma.partidaEquipe.findUnique({ 
+				where: { idPartidaEquipe: idPartida },
+			});
+			if (!partida) return res.status(404).json({ message: 'Partida não encontrada' });
+			if (!partida.resultado || partida.resultado === 'BYE') {
+				return res.status(400).json({ message: 'Esta partida não possui resultado para desfazer' });
+			}
+
+			const { idCampeonatoModalidade, round, position } = partida as any;
+			
+			const nextRound = round + 1;
+			const nextPos = Math.ceil(position / 2);
+			const nextMatch = await prisma.partidaEquipe.findUnique({ 
+				where: ({
+					idCampeonatoModalidade_round_position: { idCampeonatoModalidade, round: nextRound, position: nextPos }
+				} as any)
+			});
+			
+			if (nextMatch?.resultado && nextMatch.resultado !== 'BYE') {
+				return res.status(400).json({ 
+					message: 'Não é possível desfazer. A próxima partida já possui resultado definido.' 
+				});
+			}
+
+			await prisma.partidaEquipe.update({ 
+				where: { idPartidaEquipe: idPartida }, 
+				data: { resultado: null } 
+			});
+
+			if (nextMatch) {
+				const side = position % 2 === 1 ? 1 : 2;
+				const nextField = side === 1 ? 'idInscricaoEquipe1' : 'idInscricaoEquipe2';
+				await prisma.partidaEquipe.update({ 
+					where: ({
+						idCampeonatoModalidade_round_position: { idCampeonatoModalidade, round: nextRound, position: nextPos }
+					} as any), 
+					data: ({ [nextField]: null } as any) 
+				});
+			}
+
+			const cm = await prisma.campeonatoModalidade.findUnique({
+				where: { idCampeonatoModalidade },
+				select: { idCampeonato: true },
+			});
+			if (cm) await refreshCampeonatoChaveamentoStatus(cm.idCampeonato);
+
+			return res.json({ message: 'Resultado desfeito com sucesso' });
+		} catch (err: any) {
+			return res.status(500).json({ message: err?.message || 'Erro ao desfazer resultado' });
 		}
 	},
 };
