@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { Menu, Plus, Edit, Trash2, Filter, User } from 'lucide-react';
+import { Plus, Edit, Trash2, Filter, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,9 @@ import { useSidebar } from '@/context/SidebarContext';
 import Header from '@/components/layout/Header';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Atleta, AtletaInput, fetchAtletas, createAtleta, updateAtleta, deleteAtleta } from '@/services/api';
+import { MaskedInput } from '@/components/ui/masked-input';
+import { validarEmail, validarTelefone } from '@/lib/validations';
+import { removerMascara, mascaraTelefone } from '@/lib/masks';
 
 const Atletas = () => {
   const { isCollapsed: isSidebarCollapsed, toggle: toggleSidebar, setCollapsed: setSidebarCollapsed } = useSidebar();
@@ -40,7 +43,11 @@ const Atletas = () => {
     status: true,
   });
 
-  // gestão de avatar local (preview e persistência por id no localStorage)
+  const [errosValidacao, setErrosValidacao] = useState<{
+    email?: string;
+    telefone?: string;
+  }>({});
+
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatars, setAvatars] = useState<Record<number, string>>(() => {
     try {
@@ -80,11 +87,10 @@ const Atletas = () => {
       status: true,
     });
     setAtletaEditando(null);
+    setErrosValidacao({});
+    setAvatarPreview(null);
   };
 
-  // função utilitária é definida mais abaixo para uso nos filtros e tabela
-
-  // React Query
   const { data: atletas = [], isLoading, isError } = useQuery<Atleta[]>({
     queryKey: ['atletas'],
     queryFn: fetchAtletas,
@@ -93,7 +99,6 @@ const Atletas = () => {
   const createMutation = useMutation({
     mutationFn: (payload: AtletaInput) => createAtleta(payload),
     onSuccess: (novo) => {
-      // persiste avatar local se houver preview
       if (avatarPreview && novo?.idAtleta) {
         persistAvatars({ ...avatars, [novo.idAtleta]: avatarPreview });
         setAvatarPreview(null);
@@ -130,17 +135,68 @@ const Atletas = () => {
     onError: () => toast({ title: 'Erro ao remover atleta', variant: 'destructive' })
   });
 
+  const validarCampos = (): boolean => {
+    const novosErros: typeof errosValidacao = {};
+    const camposFaltando: string[] = [];
+
+    if (!validarEmail(formData.email)) {
+      novosErros.email = 'Email inválido';
+    }
+
+    const telefoneNumeros = removerMascara(formData.telefone);
+    if (!validarTelefone(telefoneNumeros)) {
+      novosErros.telefone = 'Telefone inválido (mínimo 10 dígitos)';
+    }
+
+    if (!formData.graduacao) {
+      camposFaltando.push('Graduação');
+    }
+
+    if (!formData.nome.trim()) {
+      camposFaltando.push('Nome');
+    }
+
+    if (!formData.dataNascimento) {
+      camposFaltando.push('Data de Nascimento');
+    }
+
+    if (!formData.peso || Number.parseFloat(formData.peso) <= 0) {
+      camposFaltando.push('Peso');
+    }
+
+    if (camposFaltando.length > 0) {
+      toast({
+        title: 'Campos obrigatórios faltando',
+        description: `Por favor, preencha: ${camposFaltando.join(', ')}.`,
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    setErrosValidacao(novosErros);
+    
+    if (Object.keys(novosErros).length > 0) {
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validarCampos()) {
+      return;
+    }
 
     const payload: AtletaInput = {
       nome: formData.nome,
       email: formData.email,
-      telefone: formData.telefone,
+      telefone: removerMascara(formData.telefone), // Remove máscara antes de enviar
       dataNascimento: formData.dataNascimento,
       genero: formData.genero,
       graduacao: formData.graduacao,
-      peso: parseFloat(formData.peso),
+      peso: Number.parseFloat(formData.peso),
       status: formData.status,
     };
 
@@ -168,10 +224,11 @@ const Atletas = () => {
   };
 
   const handleDelete = (id: number) => {
-    deleteMutation.mutate(id);
+    if (globalThis.confirm('Tem certeza que deseja excluir este atleta? Esta ação não pode ser desfeita.')) {
+      deleteMutation.mutate(id);
+    }
   };
 
-  // Helpers para filtros
   const calcularIdade = (dataNascimento: string): number => {
     const hoje = new Date();
     const nascimento = new Date(dataNascimento);
@@ -272,22 +329,41 @@ const Atletas = () => {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="email">Email</Label>
-                          <Input
+                          <MaskedInput
                             id="email"
-                            type="email"
+                            mask="email"
                             value={formData.email}
-                            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                            onChange={(value) => {
+                              setFormData(prev => ({ ...prev, email: value }));
+                              if (errosValidacao.email) {
+                                setErrosValidacao(prev => ({ ...prev, email: undefined }));
+                              }
+                            }}
                             required
+                            className={errosValidacao.email ? 'border-red-500' : ''}
                           />
+                          {errosValidacao.email && (
+                            <p className="text-sm text-red-500 mt-1">{errosValidacao.email}</p>
+                          )}
                         </div>
                         <div>
                           <Label htmlFor="telefone">Telefone</Label>
-                          <Input
+                          <MaskedInput
                             id="telefone"
+                            mask="telefone"
                             value={formData.telefone}
-                            onChange={(e) => setFormData(prev => ({ ...prev, telefone: e.target.value }))}
+                            onChange={(value) => {
+                              setFormData(prev => ({ ...prev, telefone: value }));
+                              if (errosValidacao.telefone) {
+                                setErrosValidacao(prev => ({ ...prev, telefone: undefined }));
+                              }
+                            }}
                             required
+                            className={errosValidacao.telefone ? 'border-red-500' : ''}
                           />
+                          {errosValidacao.telefone && (
+                            <p className="text-sm text-red-500 mt-1">{errosValidacao.telefone}</p>
+                          )}
                         </div>
                       </div>
 
@@ -297,15 +373,17 @@ const Atletas = () => {
                           <Input
                             id="dataNascimento"
                             type="date"
+                            min="1900-01-01"
+                            max={new Date().toISOString().split('T')[0]}
                             value={formData.dataNascimento}
                             onChange={(e) => setFormData(prev => ({ ...prev, dataNascimento: e.target.value }))}
                             required
                           />
                         </div>
                         <div>
-                          <Label htmlFor="graduacao">Graduação</Label>
-                          <Select value={formData.graduacao} onValueChange={(value) => setFormData(prev => ({ ...prev, graduacao: value }))}>
-                            <SelectTrigger>
+                          <Label htmlFor="graduacao">Graduação <span className="text-red-500">*</span></Label>
+                          <Select value={formData.graduacao} onValueChange={(value) => setFormData(prev => ({ ...prev, graduacao: value }))} required>
+                            <SelectTrigger className={formData.graduacao ? '' : 'border-gray-300'}>
                               <SelectValue placeholder="Selecione a graduação" />
                             </SelectTrigger>
                             <SelectContent>
@@ -481,7 +559,7 @@ const Atletas = () => {
                       <TableCell>
                         <div>
                           <div className="text-sm">{atleta.email}</div>
-                          <div className="text-sm text-gray-500">{atleta.telefone}</div>
+                          <div className="text-sm text-gray-500">{mascaraTelefone(atleta.telefone)}</div>
                         </div>
                       </TableCell>
                       <TableCell>{calcularIdade(atleta.dataNascimento)} anos</TableCell>
