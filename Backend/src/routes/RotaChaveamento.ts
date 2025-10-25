@@ -11,6 +11,10 @@ router.post('/chaveamento/avancar/atleta', ChaveamentoController.avancarAtleta);
 
 router.post('/chaveamento/avancar/equipe', ChaveamentoController.avancarEquipe);
 
+router.post('/chaveamento/desfazer/atleta', ChaveamentoController.desfazerAtleta);
+
+router.post('/chaveamento/desfazer/equipe', ChaveamentoController.desfazerEquipe);
+
 router.get('/chaveamento/partidas/atleta/:idCampeonatoModalidade', ChaveamentoController.listarPartidasAtletaPorCategoria);
 router.get('/chaveamento/partidas/equipe/:idCampeonatoModalidade', ChaveamentoController.listarPartidasEquipePorCategoria);
 
