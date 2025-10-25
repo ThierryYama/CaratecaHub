@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Trophy,
-  Users,
   Filter,
   Eye,
   Play,
@@ -9,6 +8,7 @@ import {
   RefreshCcw,
   Loader2,
   GitBranch,
+  Crown,
 } from 'lucide-react';
 import type { AxiosError } from 'axios';
 import Header from '@/components/layout/Header';
@@ -16,6 +16,15 @@ import Sidebar from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -56,6 +65,8 @@ import {
   AdvanceResult,
   avancarPartidaAtleta,
   avancarPartidaEquipe,
+  desfazerPartidaAtleta,
+  desfazerPartidaEquipe,
   resetChaveamentoCategoria,
   fetchEtapas,
 } from '@/services/api';
@@ -297,6 +308,10 @@ const ChaveamentosGerencia: React.FC = () => {
   const [selectedBracket, setSelectedBracket] = useState<NormalizedBracket | null>(null);
   const [bracketLoading, setBracketLoading] = useState(false);
   const [advancingMatchId, setAdvancingMatchId] = useState<number | null>(null);
+  const [undoingMatchId, setUndoingMatchId] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [modalidadeFilter, setModalidadeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const campeoesDefinidos = !!etapasStatus?.chaveamentoGerado;
   const prevCampeoesDefinidos = useRef<boolean>(false);
 
@@ -617,6 +632,41 @@ const ChaveamentosGerencia: React.FC = () => {
     }
   };
 
+  const handleUndo = async (
+    modalidade: CampeonatoModalidadeWithCategoria,
+    match: BracketRound['matches'][number],
+  ) => {
+    if (!globalThis.confirm('Tem certeza que deseja desfazer este resultado? Esta ação irá reverter o vencedor desta partida.')) {
+      return;
+    }
+
+    const isEquipe = isEquipeModalidade(modalidade.categoria?.modalidade);
+    setUndoingMatchId(match.id);
+    try {
+      await (isEquipe ? desfazerPartidaEquipe(match.id) : desfazerPartidaAtleta(match.id));
+
+      const updatedBracket = await updateModalidadeStatus(modalidade);
+      if (selectedModalidade?.idCampeonatoModalidade === modalidade.idCampeonatoModalidade) {
+        setSelectedBracket(updatedBracket ?? null);
+      }
+
+      await invalidateEtapasStatus();
+
+      toast({
+        title: 'Resultado desfeito',
+        description: 'O resultado da partida foi revertido com sucesso.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro ao desfazer resultado',
+        description: getApiErrorMessage(error, 'Tente novamente em instantes.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setUndoingMatchId(null);
+    }
+  };
+
   const handleOpenBracket = async (modalidade: CampeonatoModalidadeWithCategoria) => {
     setSelectedModalidade(modalidade);
     setBracketDialogOpen(true);
@@ -642,16 +692,61 @@ const ChaveamentosGerencia: React.FC = () => {
     setSelectedModalidade(null);
     setSelectedBracket(null);
     setAdvancingMatchId(null);
+    setUndoingMatchId(null);
   };
 
-  const totalCategorias = categorias.length;
-  const gerados = categorias.reduce(
+  const categoriasFiltradas = useMemo(() => {
+    let filtered = categorias;
+
+    if (searchTerm.trim()) {
+      const query = searchTerm.toLowerCase();
+      filtered = filtered.filter((modalidade) =>
+        (modalidade.categoria?.nome ?? '').toLowerCase().includes(query)
+      );
+    }
+
+    if (modalidadeFilter !== 'all') {
+      filtered = filtered.filter((modalidade) => 
+        modalidade.categoria?.modalidade === modalidadeFilter
+      );
+    }
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((modalidade) => {
+        const id = modalidade.idCampeonatoModalidade;
+        const status = statusMap[id];
+        
+        if (statusFilter === 'pendente') {
+          return !status?.generated;
+        }
+        if (statusFilter === 'gerado') {
+          return status?.generated && !status?.bracket?.champion;
+        }
+        if (statusFilter === 'campeao') {
+          return !!status?.bracket?.champion;
+        }
+        if (statusFilter === 'erro') {
+          return !!status?.error;
+        }
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [categorias, searchTerm, modalidadeFilter, statusFilter, statusMap]);
+
+  const totalCategorias = categoriasFiltradas.length;
+  const gerados = categoriasFiltradas.reduce(
     (acc, modalidade) => acc + (statusMap[modalidade.idCampeonatoModalidade]?.generated ? 1 : 0),
     0,
   );
   const pendentes = totalCategorias - gerados;
-  const carregandoAlgum = categorias.some(
+  const carregandoAlgum = categoriasFiltradas.some(
     (modalidade) => statusMap[modalidade.idCampeonatoModalidade]?.loading,
+  );
+  const totalComCampeao = categoriasFiltradas.reduce(
+    (acc, modalidade) => acc + (statusMap[modalidade.idCampeonatoModalidade]?.bracket?.champion ? 1 : 0),
+    0,
   );
 
   return (
@@ -695,7 +790,7 @@ const ChaveamentosGerencia: React.FC = () => {
             <Card>
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-3 rounded-lg bg-green-100 text-green-600">
-                  <Users className="h-5 w-5" />
+                  <GitBranch className="h-5 w-5" />
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-gray-500">Gerados</p>
@@ -716,14 +811,12 @@ const ChaveamentosGerencia: React.FC = () => {
             </Card>
             <Card>
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-blue-100 text-blue-600">
-                  <RefreshCcw className="h-5 w-5" />
+                <div className="p-3 rounded-lg bg-amber-100 text-amber-600">
+                  <Crown className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Status</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {carregandoAlgum ? 'Atualizando…' : 'Sincronizado'}
-                  </p>
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Campeões</p>
+                  <p className="text-2xl font-semibold text-gray-900">{totalComCampeao}</p>
                 </div>
               </CardContent>
             </Card>
@@ -774,6 +867,65 @@ const ChaveamentosGerencia: React.FC = () => {
           </Card>
 
           <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Filter className="h-4 w-4 text-red-600" />
+                Filtros de Pesquisa
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="searchCategoria" className="text-xs">Buscar por categoria</Label>
+                  <Input
+                    id="searchCategoria"
+                    type="text"
+                    placeholder="Nome da categoria..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="filterModalidade" className="text-xs">Modalidade</Label>
+                  <Select value={modalidadeFilter} onValueChange={setModalidadeFilter}>
+                    <SelectTrigger id="filterModalidade" className="h-9 text-sm">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as modalidades</SelectItem>
+                      <SelectItem value={Modalidade.KATA}>Kata Individual</SelectItem>
+                      <SelectItem value={Modalidade.KUMITE}>Kumite Individual</SelectItem>
+                      <SelectItem value={Modalidade.KATA_EQUIPE}>Kata por Equipe</SelectItem>
+                      <SelectItem value={Modalidade.KUMITE_EQUIPE}>Kumite por Equipe</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="filterStatus" className="text-xs">Status</Label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger id="filterStatus" className="h-9 text-sm">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os status</SelectItem>
+                      <SelectItem value="pendente">Pendente</SelectItem>
+                      <SelectItem value="gerado">Gerado</SelectItem>
+                      <SelectItem value="campeao">Campeão Definido</SelectItem>
+                      <SelectItem value="erro">Erro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {(searchTerm || modalidadeFilter !== 'all' || statusFilter !== 'all') && (
+                <div className="mt-3 text-xs text-gray-600">
+                  Mostrando {totalCategorias} de {categorias.length} categoria(s)
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-red-600" />
@@ -819,6 +971,16 @@ const ChaveamentosGerencia: React.FC = () => {
                     Vincule categorias ao campeonato selecionado para gerar chaveamentos.
                   </p>
                 </div>
+              ) : !categoriasFiltradas.length ? (
+                <div className="text-center py-12">
+                  <Filter className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Nenhuma categoria encontrada
+                  </h3>
+                  <p className="text-gray-600">
+                    Tente ajustar os filtros de pesquisa para encontrar categorias.
+                  </p>
+                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -832,7 +994,7 @@ const ChaveamentosGerencia: React.FC = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {categorias.map((modalidade) => {
+                      {categoriasFiltradas.map((modalidade) => {
                         const id = modalidade.idCampeonatoModalidade;
                         const status = statusMap[id] ?? {
                           generated: false,
@@ -842,19 +1004,27 @@ const ChaveamentosGerencia: React.FC = () => {
                         };
                         const isEquipe = isEquipeModalidade(modalidade.categoria?.modalidade);
                         const participantsCount = status.bracket?.totalParticipants ?? '—';
+                        const hasChampion = !!status.bracket?.champion;
                         const statusColor = status.error
                           ? 'bg-red-100 text-red-700 hover:bg-red-100'
-                          : status.generated
-                            ? 'bg-green-100 text-green-700 hover:bg-green-100'
-                            : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100';
+                          : hasChampion
+                            ? 'bg-amber-100 text-amber-700 hover:bg-amber-100'
+                            : status.generated
+                              ? 'bg-green-100 text-green-700 hover:bg-green-100'
+                              : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100';
 
                         return (
-                          <TableRow key={id}>
+                          <TableRow key={id} className={hasChampion ? 'bg-amber-50/30' : ''}>
                             <TableCell>
                               <div className="flex flex-col">
-                                <span className="font-semibold text-gray-900">
-                                  {modalidade.categoria?.nome ?? 'Categoria'}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  {hasChampion && (
+                                    <Crown className="h-4 w-4 text-amber-500" aria-label="Campeão definido" />
+                                  )}
+                                  <span className="font-semibold text-gray-900">
+                                    {modalidade.categoria?.nome ?? 'Categoria'}
+                                  </span>
+                                </div>
                                 <span className="text-xs text-gray-500">
                                   {isEquipe ? 'Disputa por equipes' : 'Disputa individual'}
                                 </span>
@@ -877,7 +1047,8 @@ const ChaveamentosGerencia: React.FC = () => {
                                 <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-auto" />
                               ) : (
                                 <Badge className={cn(statusColor, 'inline-flex items-center gap-1')}>
-                                  {status.generated ? 'Gerado' : status.error ? 'Erro' : 'Pendente'}
+                                  {hasChampion && <Crown className="h-3 w-3" />}
+                                  {hasChampion ? 'Campeão Definido' : status.generated ? 'Gerado' : status.error ? 'Erro' : 'Pendente'}
                                 </Badge>
                               )}
                             </TableCell>
@@ -951,7 +1122,9 @@ const ChaveamentosGerencia: React.FC = () => {
               bracket={selectedBracket}
               loading={bracketLoading}
               onAdvance={selectedModalidade ? (match, vencedor) => handleAdvance(selectedModalidade, match, vencedor) : undefined}
+              onUndo={selectedModalidade ? (match) => handleUndo(selectedModalidade, match) : undefined}
               advancingMatchId={advancingMatchId}
+              undoingMatchId={undoingMatchId}
             />
           </ScrollArea>
           <DialogFooter>
