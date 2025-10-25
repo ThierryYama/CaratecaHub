@@ -40,6 +40,7 @@ const Inscricoes: React.FC = () => {
   const [tab, setTab] = useState<'atletas' | 'equipes'>('atletas');
   const [selectedModalidadeId, setSelectedModalidadeId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; onConfirm?: () => void }>({ open: false });
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -499,13 +500,16 @@ const Inscricoes: React.FC = () => {
                           variant="outline"
                           className="text-red-600 hover:text-red-700 border-red-600"
                           onClick={() => {
-                            if (globalThis.confirm('Tem certeza que deseja remover esta inscrição?')) {
-                              if (tab === 'atletas') {
-                                desvincularInscricaoAtleta.mutate(insc.idInscricaoAtleta);
-                              } else {
-                                desvincularInscricaoEquipe.mutate(insc.idInscricaoEquipe);
+                            setConfirmDialog({
+                              open: true,
+                              onConfirm: () => {
+                                if (tab === 'atletas') {
+                                  desvincularInscricaoAtleta.mutate(insc.idInscricaoAtleta);
+                                } else {
+                                  desvincularInscricaoEquipe.mutate(insc.idInscricaoEquipe);
+                                }
                               }
-                            }
+                            });
                           }}
                         >
                           Remover
@@ -524,7 +528,7 @@ const Inscricoes: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-  <Sidebar onItemClick={handleMenuItemClick} />
+      <Sidebar onItemClick={handleMenuItemClick} />
       <div className="flex-1 flex flex-col">
         <Header onToggleSidebar={toggleSidebar} />
         <main className="flex-1 p-6">
@@ -575,10 +579,6 @@ const Inscricoes: React.FC = () => {
               title={
                 etapasStatus?.inscricoesConfirmadas 
                   ? 'Inscrições já confirmadas' 
-                  : !validacaoInscricoes.podeConfirmar 
-                    ? 'Cada categoria precisa ter pelo menos 2 participantes inscritos'
-                    : ''
-              }
               onClick={() => {
                 if (!validacaoInscricoes.podeConfirmar) {
                   toast({ 
@@ -588,14 +588,27 @@ const Inscricoes: React.FC = () => {
                   });
                   return;
                 }
-                if (globalThis.confirm('Tem certeza que deseja confirmar as inscrições? Após a confirmação, não será possível modificar as inscrições.')) {
-                  confirmarInscricoesMutation.mutate();
-                }
+                setShowConfirmModal(true);
+              }}
+                setConfirmDialog({
+                  open: true,
+                  onConfirm: () => confirmarInscricoesMutation.mutate()
+                });
               }}
             >
               {confirmarInscricoesMutation.isPending ? 'Confirmando...' : 'Confirmar Inscrições'}
             </Button>
           </div>
+          <ConfirmDialog
+            open={confirmDialog.open}
+            title="Confirmação"
+            description="Tem certeza que deseja realizar esta ação?"
+            onCancel={() => setConfirmDialog({ open: false })}
+            onConfirm={() => {
+              confirmDialog.onConfirm?.();
+              setConfirmDialog({ open: false });
+            }}
+          />
         </main>
       </div>
     </div>
@@ -603,6 +616,35 @@ const Inscricoes: React.FC = () => {
 };
 
 export default Inscricoes;
+
+// Simple confirmation dialog component
+function ConfirmDialog({
+  open,
+  title,
+  description,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  title?: string;
+  description?: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+      <div className="bg-white rounded-lg shadow-lg p-6 min-w-[320px]">
+        <h2 className="text-lg font-semibold mb-2">{title || 'Confirmação'}</h2>
+        <p className="mb-4">{description || 'Tem certeza que deseja realizar esta ação?'}</p>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onCancel}>Cancelar</Button>
+          <Button className="bg-red-600 hover:bg-red-700" onClick={onConfirm}>Confirmar</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CategorySearchSelect({
   options,
