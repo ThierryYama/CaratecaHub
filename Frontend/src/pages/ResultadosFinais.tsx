@@ -161,7 +161,7 @@ const extrairResultados = (
   const terceiros: any[] = [];
 
   semifinais.forEach(semi => {
-    if (semi.resultado) {
+    if (semi.resultado && semi.resultado !== 'BYE') {
       const perdedorSlotSemi = semi.resultado.endsWith('_1') ? 2 : 1;
       
       if (tipo === 'ATLETA') {
