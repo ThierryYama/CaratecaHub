@@ -394,7 +394,11 @@ const VincularCategorias = () => {
                             variant="outline"
                             size="sm"
                             disabled={removeMutation.isPending || etapasStatus?.categoriasConfirmadas}
-                            onClick={() => removeMutation.mutate(categoria.idCategoria)}
+                            onClick={() => {
+                              if (globalThis.confirm('Tem certeza que deseja remover esta categoria do campeonato?')) {
+                                removeMutation.mutate(categoria.idCategoria);
+                              }
+                            }}
                             className="text-red-600 hover:text-red-700"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -423,7 +427,11 @@ const VincularCategorias = () => {
             <Button
               className="bg-blue-600 hover:bg-blue-700 px-8"
               disabled={!Array.isArray(categoriasVinculadas) || categoriasVinculadas.length === 0 || etapasStatus?.categoriasConfirmadas}
-              onClick={() => confirmarCategoriasMutation.mutate()}
+              onClick={() => {
+                if (globalThis.confirm('Tem certeza que deseja confirmar as categorias? Após a confirmação, não será possível adicionar ou remover categorias.')) {
+                  confirmarCategoriasMutation.mutate();
+                }
+              }}
               title={etapasStatus?.categoriasConfirmadas ? 'Categorias já confirmadas' : ''}
             >
               Confirmar Categorias
