@@ -20,17 +20,27 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('associacao');
-      localStorage.removeItem('currentCampeonatoId');
-      
-      const currentPath = globalThis.location.pathname;
-      if (currentPath !== '/login' && currentPath !== '/register') {
-        globalThis.location.href = '/login';
+    try {
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('associacao');
+        localStorage.removeItem('currentCampeonatoId');
+
+        const currentPath = globalThis.location.pathname;
+        if (currentPath !== '/login' && currentPath !== '/register') {
+          globalThis.location.href = '/login';
+        }
       }
+      const message = error?.response?.data?.message || error?.message || 'Erro na requisição';
+      const enriched = Object.assign(error instanceof Error ? error : new Error(message), {
+        response: error.response,
+        data: error?.response?.data,
+        message,
+      });
+      return Promise.reject(enriched);
+    } catch {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
     }
-    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
   }
 );
 

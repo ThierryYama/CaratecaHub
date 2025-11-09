@@ -27,7 +27,7 @@ import {
   fetchEtapas,
   confirmarInscricoes,
 } from '@/services/api';
-import { AlertCircle, CheckCircle2, Users, UserRound, ChevronsUpDown, Check, Building2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Users, UserRound, ChevronsUpDown, Check, Building2, Trophy, Award, Weight, Search as SearchIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
@@ -35,11 +35,34 @@ const modalidadeLabel = (m?: Modalidade) => (m ?? '').toString().replace(/_/g, '
 const isEquipeModalidade = (m?: string) => m === 'KATA_EQUIPE' || m === 'KUMITE_EQUIPE';
 const isIndividualModalidade = (m?: string) => m === 'KATA' || m === 'KUMITE';
 
+const ORDEM_GRADUACAO_PADRAO = [
+  '10º KYU','9º KYU','8º KYU','7º KYU','6º KYU','5º KYU','4º KYU','3º KYU','2º KYU','1º KYU',
+  '1º DAN','2º DAN','3º DAN','4º DAN','5º DAN','6º DAN','7º DAN','8º DAN','9º DAN','10º DAN'
+];
+const normalizaGraduacao = (g?: string) => (g || '').trim().toUpperCase();
+const graduacaoIndex = (g?: string) => {
+  const n = normalizaGraduacao(g);
+  const i = ORDEM_GRADUACAO_PADRAO.indexOf(n);
+  return i === -1 ? ORDEM_GRADUACAO_PADRAO.length + 1 : i;
+};
+const calcIdadeNaData = (dataNascimento?: string, dataRef?: Date) => {
+  if (!dataNascimento) return 0;
+  const nascimento = new Date(dataNascimento);
+  const ref = dataRef ?? new Date();
+  let idade = ref.getFullYear() - nascimento.getFullYear();
+  const mDiff = ref.getMonth() - nascimento.getMonth();
+  if (mDiff < 0 || (mDiff === 0 && ref.getDate() < nascimento.getDate())) idade--;
+  return idade;
+};
+
 const Inscricoes: React.FC = () => {
   const { isCollapsed: sidebarCollapsed, toggle: toggleSidebarCtx, setCollapsed: setSidebarCollapsed } = useSidebar();
   const [tab, setTab] = useState<'atletas' | 'equipes'>('atletas');
   const [selectedModalidadeId, setSelectedModalidadeId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+  const [categorySearch, setCategorySearch] = useState('');
+  const [categoryPage, setCategoryPage] = useState(1);
+  const CATEGORY_PAGE_SIZE = 9;
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; onConfirm?: () => void }>({ open: false });
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -101,7 +124,6 @@ const Inscricoes: React.FC = () => {
     enabled: tab === 'equipes' && selectedModalidadeId != null,
   });
 
-  // Hook para buscar todas as inscrições de atletas por categoria
   const allInscricoesAtletas = useQuery({
     queryKey: ['allInscricoesAtletas', campeonatoId],
     queryFn: async () => {
@@ -117,7 +139,6 @@ const Inscricoes: React.FC = () => {
     enabled: !!campeonatoId,
   });
 
-  // Hook para buscar todas as inscrições de equipes por categoria
   const allInscricoesEquipes = useQuery({
     queryKey: ['allInscricoesEquipes', campeonatoId],
     queryFn: async () => {
@@ -133,11 +154,9 @@ const Inscricoes: React.FC = () => {
     enabled: !!campeonatoId,
   });
 
-  // Verifica se todas as categorias têm pelo menos 2 inscritos
   const validacaoInscricoes = useMemo(() => {
     const categoriasInsuficientes: string[] = [];
     
-    // Valida categorias de atletas
     (allInscricoesAtletas.data ?? []).forEach(({ idModalidade, inscricoes }) => {
       const modalidade = modalidadesIndividuais.find(m => m.idCampeonatoModalidade === idModalidade);
       const inscritos = (inscricoes as InscricaoAtleta[]).filter(i => i.status === StatusInscricao.INSCRITO);
@@ -147,7 +166,6 @@ const Inscricoes: React.FC = () => {
       }
     });
 
-    // Valida categorias de equipes
     (allInscricoesEquipes.data ?? []).forEach(({ idModalidade, inscricoes }) => {
       const modalidade = modalidadesEquipe.find(m => m.idCampeonatoModalidade === idModalidade);
       const inscritos = (inscricoes as InscricaoEquipe[]).filter(i => i.status === StatusInscricao.INSCRITO);
@@ -279,7 +297,8 @@ const Inscricoes: React.FC = () => {
     }
 
     if (selectedModalidadeId != null) {
-      const catGenero = selectedModalidade?.categoria?.genero;
+      const cat = selectedModalidade?.categoria;
+      const catGenero = cat?.genero;
       if (tab === 'atletas') {
         if (catGenero && catGenero !== 'Misto') {
           list = list.filter((a: any) => a.genero === catGenero);
@@ -291,8 +310,52 @@ const Inscricoes: React.FC = () => {
           list = list.filter((e: any) => e.genero === catGenero);
         }
       }
+
+      const refData = camp ? new Date(camp.dataInicio) : new Date();
+      if (cat && tab === 'atletas') {
+        list = (list as any[]).map((a: any) => {
+          const idade = calcIdadeNaData(a.dataNascimento, refData);
+          const reasons: Record<string,string> = {};
+          if (cat.faixaIdadeMin != null && idade < cat.faixaIdadeMin) reasons.idade = `Idade ${idade} < mínimo ${cat.faixaIdadeMin}`;
+          if (cat.faixaIdadeMax != null && idade > cat.faixaIdadeMax) reasons.idade = `Idade ${idade} > máximo ${cat.faixaIdadeMax}`;
+          if (cat.modalidade === 'KUMITE') {
+            if (cat.pesoMin != null && a.peso < Number(cat.pesoMin)) reasons.peso = `Peso ${a.peso}kg < mínimo ${cat.pesoMin}kg`;
+            if (cat.pesoMax != null && a.peso > Number(cat.pesoMax)) reasons.peso = `Peso ${a.peso}kg > máximo ${cat.pesoMax}kg`;
+          }
+          if (cat.graduacaoMin && graduacaoIndex(a.graduacao) < graduacaoIndex(cat.graduacaoMin)) reasons.graduacao = `Graduação ${a.graduacao} < ${cat.graduacaoMin}`;
+          if (cat.graduacaoMax && graduacaoIndex(a.graduacao) > graduacaoIndex(cat.graduacaoMax)) reasons.graduacao = `Graduação ${a.graduacao} > ${cat.graduacaoMax}`;
+          return { ...a, _validationReasons: reasons };
+        });
+      } else if (cat && tab === 'equipes') {
+        list = (list as any[]).map((equipe: any) => {
+          const membros = (equipe.membros?.map((m: any) => m.atleta) || []).filter(Boolean);
+          const idades = membros.map((a: any) => calcIdadeNaData(a.dataNascimento, refData));
+          const gradIdx = membros.map((a: any) => graduacaoIndex(a.graduacao));
+          const pesos = membros.map((a: any) => Number(a.peso)).filter((p: number) => !Number.isNaN(p));
+          const reasons: Record<string,string> = {};
+          if (idades.length) {
+            const minIdade = Math.min(...idades);
+            const maxIdade = Math.max(...idades);
+            if (cat.faixaIdadeMin != null && minIdade < cat.faixaIdadeMin) reasons.idade = `Idade mínima dos membros ${minIdade} < mínimo ${cat.faixaIdadeMin}`;
+            if (cat.faixaIdadeMax != null && maxIdade > cat.faixaIdadeMax) reasons.idade = `Idade máxima dos membros ${maxIdade} > máximo ${cat.faixaIdadeMax}`;
+          }
+          if (gradIdx.length) {
+            const minG = Math.min(...gradIdx);
+            const maxG = Math.max(...gradIdx);
+            if (cat.graduacaoMin && minG < graduacaoIndex(cat.graduacaoMin)) reasons.graduacao = `Há membro(s) com graduação < ${cat.graduacaoMin}`;
+            if (cat.graduacaoMax && maxG > graduacaoIndex(cat.graduacaoMax)) reasons.graduacao = `Há membro(s) com graduação > ${cat.graduacaoMax}`;
+          }
+          if (cat.modalidade === 'KUMITE_EQUIPE' && pesos.length) {
+            const minPeso = Math.min(...pesos);
+            const maxPeso = Math.max(...pesos);
+            if (cat.pesoMin != null && minPeso < Number(cat.pesoMin)) reasons.peso = `Peso mínimo dos membros ${minPeso}kg < mínimo ${cat.pesoMin}kg`;
+            if (cat.pesoMax != null && maxPeso > Number(cat.pesoMax)) reasons.peso = `Peso máximo dos membros ${maxPeso}kg > máximo ${cat.pesoMax}kg`;
+          }
+          return { ...equipe, _validationReasons: reasons };
+        });
+      }
     }
-    return list;
+    return list as any;
   }, [tab, selectedModalidadeId, selectedModalidade, inscricoesAtletas, inscricoesEquipes, atletas, equipes]);
 
   const filteredList = useMemo(() => {
@@ -322,16 +385,6 @@ const Inscricoes: React.FC = () => {
               <button className={`px-4 py-2 ${tab === 'equipes' ? 'bg-red-600 text-white' : 'bg-white'}`} onClick={() => { setTab('equipes'); setSelectedModalidadeId(null); }}>Equipes</button>
             </div>
           </div>
-          <div>
-            <span className="block text-sm font-medium text-gray-700 mb-2">Categoria</span>
-            <CategorySearchSelect
-              options={selectableModalidades}
-              value={selectedModalidadeId}
-              onChange={(id) => setSelectedModalidadeId(id)}
-              placeholder="Selecione a categoria"
-              onOpen={() => refetchCamp()}
-            />
-          </div>
           <div className="flex-1 min-w-[220px]">
             <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="buscarNome">Buscar por nome</label>
             <input
@@ -344,6 +397,124 @@ const Inscricoes: React.FC = () => {
             />
           </div>
         </div>
+      </CardContent>
+    </Card>
+  );
+
+  const categoriaLabel = (m?: Modalidade) => (m ?? '').toString().replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  const categoriasParaTab = selectableModalidades;
+  const categoriasFiltradas = useMemo(() => {
+    const q = categorySearch.trim().toLowerCase();
+    if (!q) return categoriasParaTab;
+    return categoriasParaTab.filter((m: any) => {
+      const nome = (m?.categoria?.nome || '').toLowerCase();
+      const genero = (m?.categoria?.genero || '').toLowerCase();
+      const mod = categoriaLabel(m?.categoria?.modalidade).toLowerCase();
+      return nome.includes(q) || genero.includes(q) || mod.includes(q);
+    });
+  }, [categoriasParaTab, categorySearch]);
+  const totalCategorias = categoriasFiltradas.length;
+  const totalPages = Math.max(1, Math.ceil(totalCategorias / CATEGORY_PAGE_SIZE));
+  const currentPage = Math.min(categoryPage, totalPages);
+  const pageSliceStart = (currentPage - 1) * CATEGORY_PAGE_SIZE;
+  const categoriasPaginadas = categoriasFiltradas.slice(pageSliceStart, pageSliceStart + CATEGORY_PAGE_SIZE);
+
+  useEffect(() => {
+    setCategoryPage(1);
+  }, [tab, categorySearch]);
+
+  const renderCategorySelection = (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-red-600" />
+          Selecione a Categoria
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="relative flex-1 min-w-[220px]">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              value={categorySearch}
+              onChange={(e) => setCategorySearch(e.target.value)}
+              className="w-full border rounded pl-9 pr-3 py-2"
+              placeholder="Buscar categoria por nome, gênero ou modalidade..."
+            />
+          </div>
+          <div className="text-sm text-gray-600 whitespace-nowrap">
+            {totalCategorias} {totalCategorias === 1 ? 'categoria' : 'categorias'}
+          </div>
+        </div>
+
+        {categoriasPaginadas.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">Nenhuma categoria encontrada.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {categoriasPaginadas.map((m: any) => {
+              const isSelected = selectedModalidadeId === m.idCampeonatoModalidade;
+              const cat = m.categoria || {};
+              const pesoInfo = (cat.pesoMin != null || cat.pesoMax != null) ? (
+                <div className="flex items-center gap-1">
+                  <Weight className="w-3 h-3" />
+                  <span>
+                    {cat.pesoMin != null && cat.pesoMax != null ? `${cat.pesoMin}kg - ${cat.pesoMax}kg` :
+                      cat.pesoMin != null ? `≥ ${cat.pesoMin}kg` : `≤ ${cat.pesoMax}kg`}
+                  </span>
+                </div>
+              ) : null;
+              return (
+                <button
+                  key={m.idCampeonatoModalidade}
+                  onClick={() => setSelectedModalidadeId(m.idCampeonatoModalidade)}
+                  className={`p-4 rounded-lg border-2 transition-all text-left ${isSelected ? 'border-red-600 bg-red-50 shadow-md' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className={`font-semibold ${isSelected ? 'text-red-600' : 'text-gray-900'}`}>
+                        {cat?.nome}
+                      </h3>
+                      {isSelected && <CheckCircle2 className="w-5 h-5 text-red-600 shrink-0" />}
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Trophy className="w-4 h-4" />
+                        <span>{modalidadeLabel(cat?.modalidade)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                          {cat?.genero}
+                        </Badge>
+                        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                          {cat?.faixaIdadeMin} - {cat?.faixaIdadeMax} anos
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-gray-600 space-y-1">
+                        <div className="flex items-center gap-1">
+                          <Award className="w-3 h-3" />
+                          <span>{cat?.graduacaoMin} a {cat?.graduacaoMax}</span>
+                        </div>
+                        {pesoInfo}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-gray-600">Página {currentPage} de {totalPages}</div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" disabled={currentPage <= 1} onClick={() => setCategoryPage(p => Math.max(1, p - 1))}>Anterior</Button>
+              <Button variant="outline" disabled={currentPage >= totalPages} onClick={() => setCategoryPage(p => Math.min(totalPages, p + 1))}>Próxima</Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -380,7 +551,8 @@ const Inscricoes: React.FC = () => {
           {filteredList.map((item: any) => {
             const assoc = item.associacao;
             const nomeAssociacao = assoc ? (assoc.nome || assoc.sigla || assoc.cnpj || `Assoc. #${item.idAssociacao}`) : null;
-            
+            const reasons: Record<string,string> | undefined = (item as any)._validationReasons;
+            const invalid = !!reasons && Object.keys(reasons).length > 0;
             return (
               <div key={(item.idAtleta ?? item.idEquipe)} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3 gap-3 flex-wrap">
@@ -402,47 +574,57 @@ const Inscricoes: React.FC = () => {
                   </div>
                   <div className="shrink-0 w-full sm:w-auto">
                     <Button
-                      disabled={selectedModalidadeId == null || !canInscrever(tab === 'atletas')}
+                      disabled={selectedModalidadeId == null || !canInscrever(tab === 'atletas') || invalid}
                       onClick={() => {
                         if (selectedModalidadeId == null) return;
-                      const modId = Number(selectedModalidadeId);
-                      if (tab === 'atletas') {
-                        const existing = (inscricoesAtletas ?? []).find(i => i.idAtleta === item.idAtleta);
-                        if (existing) {
-                          if (existing.status === StatusInscricao.AGUARDANDO) {
-                            confirmarInscricaoAtleta.mutate(existing.idInscricaoAtleta);
+                        const modId = Number(selectedModalidadeId);
+                        if (tab === 'atletas') {
+                          const existing = (inscricoesAtletas ?? []).find(i => i.idAtleta === item.idAtleta);
+                          if (existing) {
+                            if (existing.status === StatusInscricao.AGUARDANDO) {
+                              confirmarInscricaoAtleta.mutate(existing.idInscricaoAtleta);
+                            } else {
+                              toast({ title: 'Atleta já inscrito nesta categoria' });
+                            }
                           } else {
-                            toast({ title: 'Atleta já inscrito nesta categoria' });
+                            inscreverAtleta.mutate({ idAtleta: item.idAtleta, idCampeonatoModalidade: modId });
                           }
                         } else {
-                          inscreverAtleta.mutate({ idAtleta: item.idAtleta, idCampeonatoModalidade: modId });
-                        }
-                      } else {
-                        const existing = (inscricoesEquipes ?? []).find(i => i.idEquipe === item.idEquipe);
-                        if (existing) {
-                          if (existing.status === StatusInscricao.AGUARDANDO) {
-                            confirmarInscricaoEquipe.mutate(existing.idInscricaoEquipe);
+                          const existing = (inscricoesEquipes ?? []).find(i => i.idEquipe === item.idEquipe);
+                          if (existing) {
+                            if (existing.status === StatusInscricao.AGUARDANDO) {
+                              confirmarInscricaoEquipe.mutate(existing.idInscricaoEquipe);
+                            } else {
+                              toast({ title: 'Equipe já inscrita nesta categoria' });
+                            }
                           } else {
-                            toast({ title: 'Equipe já inscrita nesta categoria' });
+                            inscreverEquipe.mutate({ idEquipe: item.idEquipe, idCampeonatoModalidade: modId });
                           }
-                        } else {
-                          inscreverEquipe.mutate({ idEquipe: item.idEquipe, idCampeonatoModalidade: modId });
                         }
-                      }
-                    }}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Inscrever
-                  </Button>
+                      }}
+                      className="bg-red-600 hover:bg-red-700 w-full"
+                    >
+                      {invalid ? 'Inadequado' : 'Inscrever'}
+                    </Button>
+                  </div>
                 </div>
+                {invalid && (
+                  <div className="text-xs text-red-600 border border-red-200 rounded p-2 bg-red-50">
+                    <strong>Requisitos não atendidos:</strong>
+                    <ul className="list-disc pl-4 mt-1 space-y-0.5">
+                      {Object.entries(reasons!).map(([key, r]) => (
+                        <li key={key}>{r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {tab === 'atletas' && (
+                  <div className="text-sm text-gray-600 space-y-1 mt-2">
+                    <p>Graduação: {item.graduacao}</p>
+                    <p>Peso: {item.peso} kg</p>
+                  </div>
+                )}
               </div>
-              {tab === 'atletas' && (
-                <div className="text-sm text-gray-600 space-y-1">
-                  <p>Graduação: {item.graduacao}</p>
-                  <p>Peso: {item.peso} kg</p>
-                </div>
-              )}
-            </div>
             );
           })}
         </div>
@@ -539,6 +721,7 @@ const Inscricoes: React.FC = () => {
           )}
           {renderHeader}
           {renderFilters}
+          {renderCategorySelection}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {renderList}
             {renderInscritos}
@@ -620,7 +803,6 @@ const Inscricoes: React.FC = () => {
 
 export default Inscricoes;
 
-// Simple confirmation dialog component
 function ConfirmDialog({
   open,
   title,

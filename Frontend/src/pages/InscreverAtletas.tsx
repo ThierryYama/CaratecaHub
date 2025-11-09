@@ -42,6 +42,27 @@ import {
 	UserCheck
 } from 'lucide-react';
 
+ 
+const ORDEM_GRADUACAO_PADRAO = [
+    '10º KYU','9º KYU','8º KYU','7º KYU','6º KYU','5º KYU','4º KYU','3º KYU','2º KYU','1º KYU',
+    '1º DAN','2º DAN','3º DAN','4º DAN','5º DAN','6º DAN','7º DAN','8º DAN','9º DAN','10º DAN'
+];
+const normalizaGraduacao = (g?: string) => (g || '').trim().toUpperCase();
+const graduacaoIndex = (g?: string) => {
+    const n = normalizaGraduacao(g);
+    const i = ORDEM_GRADUACAO_PADRAO.indexOf(n);
+    return i === -1 ? ORDEM_GRADUACAO_PADRAO.length + 1 : i;
+};
+const calcIdadeNaData = (dataNascimento?: string, dataRef?: Date) => {
+    if (!dataNascimento) return 0;
+    const nascimento = new Date(dataNascimento);
+    const ref = dataRef ?? new Date();
+    let idade = ref.getFullYear() - nascimento.getFullYear();
+    const mDiff = ref.getMonth() - nascimento.getMonth();
+    if (mDiff < 0 || (mDiff === 0 && ref.getDate() < nascimento.getDate())) idade--;
+    return idade;
+};
+
 	const modalidadeLabel = (m?: Modalidade) => {
 		const base = (m ?? '').toString().split('_').join(' ').toLowerCase();
 		return base
@@ -58,6 +79,7 @@ const InscreverAtletas: React.FC = () => {
 	const [tab, setTab] = useState<'atletas' | 'equipes'>('atletas');
 	const [selectedModalidadeId, setSelectedModalidadeId] = useState<number | null>(null);
 	const [search, setSearch] = useState('');
+	const [categorySearch, setCategorySearch] = useState('');
 	const { toast } = useToast();
 
 	const params = useParams<{ id?: string }>();
@@ -77,8 +99,6 @@ const InscreverAtletas: React.FC = () => {
 	const categoriasModalidades = camp?.modalidades ?? [];
 	const modalidadesIndividuais = categoriasModalidades.filter(m => isIndividualModalidade(m.categoria?.modalidade));
 	const modalidadesEquipe = categoriasModalidades.filter(m => isEquipeModalidade(m.categoria?.modalidade));
-
-  
 
 	const { data: inscricoesAtletas } = useQuery<InscricaoAtleta[]>({
 		queryKey: ['inscricoesAtletasPorModalidade', selectedModalidadeId],
@@ -103,7 +123,11 @@ const InscreverAtletas: React.FC = () => {
 			queryClient.invalidateQueries({ queryKey: ['inscricoesAtletasPorModalidade', selectedModalidadeId] });
 			toast({ title: 'Atleta inscrito com sucesso' });
 		},
-		onError: (e: any) => toast({ title: 'Falha ao inscrever atleta', description: e?.message || 'Tente novamente', variant: 'destructive' }),
+		onError: (e: any) => {
+			const reasons = e?.data?.reasons as Record<string,string> | undefined;
+			const desc = reasons ? Object.values(reasons).join(' • ') : (e?.message || 'Tente novamente');
+			toast({ title: 'Falha ao inscrever atleta', description: desc, variant: 'destructive' });
+		},
 	});
 
 	const inscreverEquipe = useMutation({
@@ -118,10 +142,21 @@ const InscreverAtletas: React.FC = () => {
 			queryClient.invalidateQueries({ queryKey: ['inscricoesEquipesPorModalidade', selectedModalidadeId] });
 			toast({ title: 'Equipe inscrita com sucesso' });
 		},
-		onError: (e: any) => toast({ title: 'Falha ao inscrever equipe', description: e?.message || 'Tente novamente', variant: 'destructive' }),
+		onError: (e: any) => {
+			const reasons = e?.data?.reasons as Record<string,string> | undefined;
+			const desc = reasons ? Object.values(reasons).join(' • ') : (e?.message || 'Tente novamente');
+			toast({ title: 'Falha ao inscrever equipe', description: desc, variant: 'destructive' });
+		},
 	});
 
 	const selectableModalidades = tab === 'atletas' ? modalidadesIndividuais : modalidadesEquipe;
+
+	const filteredModalidades = useMemo(() => {
+		const list = selectableModalidades ?? [];
+		const q = categorySearch.trim().toLowerCase();
+		if (!q) return list;
+		return list.filter((m) => (m.categoria?.nome || '').toLowerCase().includes(q));
+	}, [selectableModalidades, categorySearch]);
 	const selectedModalidade = useMemo(() => {
 		const id = typeof selectedModalidadeId === 'number' ? selectedModalidadeId : -1;
 		return selectableModalidades.find(m => m.idCampeonatoModalidade === id);
@@ -145,17 +180,17 @@ const InscreverAtletas: React.FC = () => {
 
 		const availableList = useMemo(() => {
 			const baseList = (tab === 'atletas' ? (atletasDisponiveis ?? []) : (equipesDisponiveis ?? [])) as unknown as ListItem[];
-			const catGenero = selectedModalidade?.categoria?.genero;
+			const cat = selectedModalidade?.categoria;
+			const catGenero = cat?.genero;
 
 			// remove já inscritos
 			const excludeSet = new Set(
-				tab === 'atletas'
-					? (inscricoesAtletas ?? []).map(i => i.idAtleta)
-					: (inscricoesEquipes ?? []).map(i => i.idEquipe)
-			);
+					tab === 'atletas'
+						? (inscricoesAtletas ?? []).map(i => i.idAtleta)
+						: (inscricoesEquipes ?? []).map(i => i.idEquipe)
+				);
 			let list = baseList.filter((item: any) => (tab === 'atletas' ? !excludeSet.has(item.idAtleta) : !excludeSet.has(item.idEquipe)));
 
-			// filtro por gênero conforme categoria
 			if (catGenero) {
 				if (tab === 'atletas') {
 					if (catGenero !== 'Misto') list = list.filter((a: any) => a.genero === catGenero);
@@ -163,8 +198,52 @@ const InscreverAtletas: React.FC = () => {
 					list = list.filter((e: any) => (catGenero === 'Misto' ? e.genero === 'Misto' : e.genero === catGenero));
 				}
 			}
+
+			const refData = camp ? new Date(camp.dataInicio) : new Date();
+			if (tab === 'atletas' && cat) {
+				list = list.map((a: any) => {
+					const idade = calcIdadeNaData(a.dataNascimento, refData);
+					const reasons: Record<string,string> = {};
+					if (cat.faixaIdadeMin != null && idade < cat.faixaIdadeMin) reasons.idade = `Idade ${idade} < mínimo ${cat.faixaIdadeMin}`;
+					if (cat.faixaIdadeMax != null && idade > cat.faixaIdadeMax) reasons.idade = `Idade ${idade} > máximo ${cat.faixaIdadeMax}`;
+					if (cat.modalidade === 'KUMITE') {
+						if (cat.pesoMin != null && a.peso < Number(cat.pesoMin)) reasons.peso = `Peso ${a.peso}kg < mínimo ${cat.pesoMin}kg`;
+						if (cat.pesoMax != null && a.peso > Number(cat.pesoMax)) reasons.peso = `Peso ${a.peso}kg > máximo ${cat.pesoMax}kg`;
+					}
+					if (cat.graduacaoMin && graduacaoIndex(a.graduacao) < graduacaoIndex(cat.graduacaoMin)) reasons.graduacao = `Graduação ${a.graduacao} < ${cat.graduacaoMin}`;
+					if (cat.graduacaoMax && graduacaoIndex(a.graduacao) > graduacaoIndex(cat.graduacaoMax)) reasons.graduacao = `Graduação ${a.graduacao} > ${cat.graduacaoMax}`;
+					return { ...a, _validationReasons: reasons };
+				});
+			} else if (tab === 'equipes' && cat) {
+				list = list.map((equipe: any) => {
+					const membros = equipe.membros?.map((m: any) => m.atleta).filter(Boolean) || [];
+					const idades = membros.map((a: any) => calcIdadeNaData(a.dataNascimento, refData));
+					const graduacoes = membros.map((a: any) => graduacaoIndex(a.graduacao));
+					const pesos = membros.map((a: any) => Number(a.peso)).filter(p => !Number.isNaN(p));
+					const reasons: Record<string,string> = {};
+					if (idades.length) {
+						const minIdade = Math.min(...idades);
+						const maxIdade = Math.max(...idades);
+						if (cat.faixaIdadeMin != null && minIdade < cat.faixaIdadeMin) reasons.idade = `Idade mínima dos membros ${minIdade} < mínimo ${cat.faixaIdadeMin}`;
+						if (cat.faixaIdadeMax != null && maxIdade > cat.faixaIdadeMax) reasons.idade = `Idade máxima dos membros ${maxIdade} > máximo ${cat.faixaIdadeMax}`;
+					}
+					if (graduacoes.length) {
+						const minG = Math.min(...graduacoes);
+						const maxG = Math.max(...graduacoes);
+						if (cat.graduacaoMin && minG < graduacaoIndex(cat.graduacaoMin)) reasons.graduacao = `Há membro(s) com graduação < ${cat.graduacaoMin}`;
+						if (cat.graduacaoMax && maxG > graduacaoIndex(cat.graduacaoMax)) reasons.graduacao = `Há membro(s) com graduação > ${cat.graduacaoMax}`;
+					}
+					if (cat.modalidade === 'KUMITE_EQUIPE' && pesos.length) {
+						const minPeso = Math.min(...pesos);
+						const maxPeso = Math.max(...pesos);
+						if (cat.pesoMin != null && minPeso < Number(cat.pesoMin)) reasons.peso = `Peso mínimo dos membros ${minPeso}kg < mínimo ${cat.pesoMin}kg`;
+						if (cat.pesoMax != null && maxPeso > Number(cat.pesoMax)) reasons.peso = `Peso máximo dos membros ${maxPeso}kg > máximo ${cat.pesoMax}kg`;
+					}
+					return { ...equipe, _validationReasons: reasons };
+				});
+			}
 			return list;
-		}, [tab, selectedModalidade, inscricoesAtletas, inscricoesEquipes, atletasDisponiveis, equipesDisponiveis]);
+		}, [tab, selectedModalidade, inscricoesAtletas, inscricoesEquipes, atletasDisponiveis, equipesDisponiveis, camp]);
 
 	const filteredList = useMemo(() => {
 		if (!search.trim()) return availableList;
@@ -186,7 +265,7 @@ const InscreverAtletas: React.FC = () => {
 				<Header onToggleSidebar={toggle} />
 				<main className="flex-1 overflow-y-auto p-8">
 					<div className="max-w-7xl mx-auto space-y-8">
-						{/* Header com informações do campeonato */}
+
 						<div className="space-y-4">
 							<Button
 								variant="ghost"
@@ -205,7 +284,7 @@ const InscreverAtletas: React.FC = () => {
 								<Trophy className="w-12 h-12 text-red-600" />
 							</div>
 
-							{/* Info do campeonato */}
+
 							{camp && (
 								<Card>
 									<CardContent className="pt-6">
@@ -245,7 +324,7 @@ const InscreverAtletas: React.FC = () => {
 							)}
 						</div>
 
-						{/* Seleção de tipo (Atletas/Equipes) */}
+
 						<Card>
 							<CardHeader>
 								<CardTitle className="flex items-center gap-2">
@@ -296,18 +375,29 @@ const InscreverAtletas: React.FC = () => {
 							</CardContent>
 						</Card>
 
-						{/* Seleção de Categoria (Cards visuais) */}
+
 						{selectableModalidades.length > 0 && (
 							<Card>
-								<CardHeader>
-									<CardTitle className="flex items-center gap-2">
-										<Award className="w-5 h-5" />
-										Selecione a Categoria
-									</CardTitle>
-								</CardHeader>
+									<CardHeader>
+										<div className="flex items-center justify-between gap-3">
+											<CardTitle className="flex items-center gap-2">
+												<Award className="w-5 h-5" />
+												Selecione a Categoria
+											</CardTitle>
+											<div className="relative w-full max-w-xs">
+												<Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+												<Input
+													value={categorySearch}
+													onChange={(e) => setCategorySearch(e.target.value)}
+													placeholder="Buscar categoria por nome..."
+													className="pl-8"
+												/>
+											</div>
+										</div>
+									</CardHeader>
 								<CardContent>
 									<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-										{selectableModalidades.map((m) => {
+											{filteredModalidades.map((m) => {
 											const isSelected = selectedModalidadeId === m.idCampeonatoModalidade;
 											const cat = m.categoria;
 											return (
@@ -371,42 +461,31 @@ const InscreverAtletas: React.FC = () => {
 							</Card>
 						)}
 
-						{/* Busca e lista de atletas/equipes disponíveis */}
+
 						{selectedModalidadeId != null && (
 							<>
 								<Card>
 									<CardHeader>
-										<CardTitle className="flex items-center gap-2">
-											<Search className="w-5 h-5" />
-											Buscar {tab === 'atletas' ? 'Atletas' : 'Equipes'} Disponíveis
-										</CardTitle>
-									</CardHeader>
-									<CardContent>
-										<div className="relative">
-											<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-											<Input
-												id="buscarNome"
-												type="text"
-												value={search}
-												onChange={(e) => setSearch(e.target.value)}
-												className="pl-10"
-												placeholder={tab === 'atletas' ? 'Digite o nome do atleta...' : 'Digite o nome da equipe...'}
-											/>
-										</div>
-									</CardContent>
-								</Card>
-
-								<Card>
-									<CardHeader>
-										<CardTitle className="flex items-center justify-between">
-											<span className="flex items-center gap-2">
+										<div className="flex items-center justify-between gap-3">
+											<CardTitle className="flex items-center gap-2">
 												{tab === 'atletas' ? <UserRound className="w-5 h-5" /> : <Users className="w-5 h-5" />}
 												{tab === 'atletas' ? 'Atletas' : 'Equipes'} Disponíveis
-											</span>
-											<Badge variant="outline" className="text-sm">
-												{filteredList.length} {filteredList.length === 1 ? 'disponível' : 'disponíveis'}
-											</Badge>
-										</CardTitle>
+												<Badge variant="outline" className="text-sm ml-2">
+													{filteredList.length} {filteredList.length === 1 ? 'disponível' : 'disponíveis'}
+												</Badge>
+											</CardTitle>
+											<div className="relative w-full max-w-xs">
+												<Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+												<Input
+													id="buscarNome"
+													type="text"
+													value={search}
+													onChange={(e) => setSearch(e.target.value)}
+													className="pl-10"
+													placeholder={tab === 'atletas' ? 'Buscar atleta por nome...' : 'Buscar equipe por nome...'}
+												/>
+											</div>
+										</div>
 									</CardHeader>
 									<CardContent>
 										{filteredList.length === 0 ? (
@@ -457,22 +536,40 @@ const InscreverAtletas: React.FC = () => {
 																	</div>
 																)}
 
-																<Button
-																	disabled={selectedModalidadeId == null || inscreverAtleta.isPending || inscreverEquipe.isPending}
-																	onClick={() => {
-																		if (selectedModalidadeId == null) return;
-																		const modId = Number(selectedModalidadeId);
-																		if (tab === 'atletas') {
-																			inscreverAtleta.mutate({ idAtleta: item.idAtleta, idCampeonatoModalidade: modId });
-																		} else {
-																			inscreverEquipe.mutate({ idEquipe: item.idEquipe, idCampeonatoModalidade: modId });
-																		}
-																	}}
-																	className="w-full bg-red-600 hover:bg-red-700"
-																>
-																	<UserCheck className="w-4 h-4 mr-2" />
-																	Inscrever
-																</Button>
+																{(() => {
+																	const reasons: Record<string,string> | undefined = item._validationReasons;
+																	const invalid = reasons && Object.keys(reasons).length > 0;
+																	return (
+																		<div className="space-y-2">
+																			<Button
+																				disabled={selectedModalidadeId == null || inscreverAtleta.isPending || inscreverEquipe.isPending || invalid}
+																				onClick={() => {
+																					if (selectedModalidadeId == null) return;
+																					const modId = Number(selectedModalidadeId);
+																					if (tab === 'atletas') {
+																						inscreverAtleta.mutate({ idAtleta: item.idAtleta, idCampeonatoModalidade: modId });
+																					} else {
+																						inscreverEquipe.mutate({ idEquipe: item.idEquipe, idCampeonatoModalidade: modId });
+																					}
+																				}}
+																				className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
+																			>
+																				<UserCheck className="w-4 h-4 mr-2" />
+																				{invalid ? 'Inadequado' : 'Inscrever'}
+																			</Button>
+																			{invalid && (
+																				<div className="text-xs text-red-600 border border-red-200 rounded p-2 bg-red-50">
+																					<strong>Requisitos não atendidos:</strong>
+																					<ul className="list-disc pl-4 mt-1 space-y-0.5">
+																						{Object.entries(reasons).map(([key, r]) => (
+																							<li key={key}>{r}</li>
+																						))}
+																					</ul>
+																				</div>
+																			)}
+																		</div>
+																	);
+																})()}
 															</div>
 														</div>
 													);
@@ -482,7 +579,7 @@ const InscreverAtletas: React.FC = () => {
 									</CardContent>
 								</Card>
 
-								{/* Lista de inscritos */}
+
 								<Card>
 									<CardHeader>
 										<CardTitle className="flex items-center gap-2">
@@ -550,7 +647,7 @@ const InscreverAtletas: React.FC = () => {
 							</>
 						)}
 
-						{/* Mensagem quando nenhuma categoria foi selecionada */}
+
 						{!selectedModalidadeId && selectableModalidades.length > 0 && (
 							<Card className="border-dashed">
 								<CardContent className="pt-12 pb-12 text-center">
